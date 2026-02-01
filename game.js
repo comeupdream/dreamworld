@@ -1210,7 +1210,8 @@ const GameState = {
     // Shop system
     coins: 0,           // Currency for shop
     shopSelection: 0,   // Current shop menu selection
-    inShop: false       // True when in shop screen
+    inShop: false,      // True when in shop screen
+    shieldHits: 0       // Remaining shield hits (multi-hit shields)
 };
 
 // ============================================
@@ -1327,6 +1328,7 @@ function restartGame() {
     GameState.gameComplete = false;
     GameState.powerBoostTimer = 0;
     GameState.shieldTimer = 0;
+    GameState.shieldHits = 0;
     GameState.boss = null;
     GameState.bossDefeated = {};
     GameState.bossUnlocked = false;
@@ -1441,8 +1443,8 @@ const Player = {
             this.updateCamera();
         }
 
-        // Charged shooting - hold X key
-        if (GameState.keysPressed['KeyX']) {
+        // Charged shooting - hold X key (disabled during level complete)
+        if (GameState.keysPressed['KeyX'] && !GameState.gameComplete) {
             this.chargeTime++;
             if (this.chargeTime >= 10) { // Start showing charge after 10 frames
                 this.isCharging = true;
@@ -1464,8 +1466,8 @@ const Player = {
             this.isCharging = false;
         }
 
-        // Melee attack - C key
-        if (consumeKeyPress('KeyC') && this.meleeCooldown <= 0) {
+        // Melee attack - C key (disabled during level complete)
+        if (consumeKeyPress('KeyC') && this.meleeCooldown <= 0 && !GameState.gameComplete) {
             this.melee();
         }
 
@@ -1877,10 +1879,14 @@ const Player = {
     takeDamage() {
         if (GameState.invincible > 0) return;
 
-        // Shield blocks damage
-        if (GameState.shieldTimer > 0) {
-            GameState.shieldTimer = 0; // Shield breaks after one hit
+        // Multi-hit shield blocks damage
+        if (GameState.shieldTimer > 0 && GameState.shieldHits > 0) {
+            GameState.shieldHits--;
+            if (GameState.shieldHits <= 0) {
+                GameState.shieldTimer = 0; // Shield depleted
+            }
             GameState.invincible = 30;
+            Audio8Bit.playHit(); // Feedback for shield absorbing hit
             updateUI();
             return;
         }
@@ -3443,21 +3449,34 @@ function drawDrops() {
 // ============================================
 
 function useItem(slot) {
-    // Slot 0 (key 1) = power_boost, Slot 1 (key 2) = shield
-    const itemType = slot === 0 ? 'power_boost' : 'shield';
-    const itemIndex = GameState.usableItems.indexOf(itemType);
+    // Slot 0 (key 1) = power_boost, Slot 1 (key 2) = shield (any type)
+    if (slot === 0) {
+        // Power boost
+        const itemIndex = GameState.usableItems.indexOf('power_boost');
+        if (itemIndex === -1) return;
+        GameState.usableItems.splice(itemIndex, 1);
+        GameState.powerBoostTimer = 900; // 15 seconds - 2x DMG, 1.5x SPD
+    } else {
+        // Shield - find any shield type (prefer stronger ones)
+        let shieldIndex = GameState.usableItems.findIndex(i => i === 'shield_5');
+        let shieldHits = 5;
+        if (shieldIndex === -1) {
+            shieldIndex = GameState.usableItems.findIndex(i => i === 'shield_3');
+            shieldHits = 3;
+        }
+        if (shieldIndex === -1) {
+            shieldIndex = GameState.usableItems.findIndex(i => i === 'shield_1');
+            shieldHits = 1;
+        }
+        if (shieldIndex === -1) {
+            shieldIndex = GameState.usableItems.indexOf('shield'); // Basic pickup shield
+            shieldHits = 1;
+        }
+        if (shieldIndex === -1) return; // No shield available
 
-    if (itemIndex === -1) return; // Don't have this item
-
-    GameState.usableItems.splice(itemIndex, 1);
-
-    switch (itemType) {
-        case 'power_boost':
-            GameState.powerBoostTimer = 900; // 15 seconds - 2x DMG, 1.5x SPD
-            break;
-        case 'shield':
-            GameState.shieldTimer = 1200; // 20 seconds
-            break;
+        GameState.usableItems.splice(shieldIndex, 1);
+        GameState.shieldTimer = 99999; // Lasts until hits run out
+        GameState.shieldHits = shieldHits;
     }
     updateUI();
 }
@@ -3860,6 +3879,15 @@ function switchWorld() {
         if (GameState.boss && !GameState.bossDefeated[Levels.current]) {
             GameState.boss = null;
         }
+
+        // Spawn dream world boss if unlocked (e.g., Void Specter at level 6)
+        if (GameState.bossUnlocked && !GameState.bossDefeated[Levels.current]) {
+            const bossTemplate = BossTemplates[Levels.current];
+            if (bossTemplate && bossTemplate.world === 'dream') {
+                spawnBoss(Levels.current);
+                showMessage(`${bossTemplate.name.toUpperCase()} APPEARS!`, 120);
+            }
+        }
     } else {
         GameState.currentWorld = 'real';
         Player.gridX = 12;
@@ -3882,9 +3910,16 @@ function switchWorld() {
 function enterDoor() {
     // Check if this is a boss level - same logic as reachGoal
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
-        // Unlock boss - player must return to real world to fight
+        const bossTemplate = BossTemplates[Levels.current];
         GameState.bossUnlocked = true;
-        showMessage('BOSS UNLOCKED! Return to the portal!', 180);
+
+        // If boss is in current world, spawn immediately
+        if (bossTemplate && bossTemplate.world === GameState.currentWorld) {
+            spawnBoss(Levels.current);
+            showMessage(`${bossTemplate.name.toUpperCase()} APPEARS!`, 120);
+        } else {
+            showMessage('BOSS UNLOCKED! Return to the portal!', 180);
+        }
         return; // Don't complete level yet
     }
     completeLevel();
@@ -3893,9 +3928,17 @@ function enterDoor() {
 function reachGoal() {
     // Check if this is a boss level
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
-        // Unlock boss - player must return to real world to fight
+        const bossTemplate = BossTemplates[Levels.current];
         GameState.bossUnlocked = true;
-        showMessage('BOSS UNLOCKED! Return to the portal!', 180);
+
+        // If boss is in current world (dream world for Void Specter), spawn immediately
+        if (bossTemplate && bossTemplate.world === GameState.currentWorld) {
+            spawnBoss(Levels.current);
+            showMessage(`${bossTemplate.name.toUpperCase()} APPEARS!`, 120);
+        } else {
+            // Boss is in other world - tell player to go there
+            showMessage('BOSS UNLOCKED! Return to the portal!', 180);
+        }
         return; // Don't complete level yet
     }
     completeLevel();
@@ -3939,20 +3982,20 @@ const ShopItems = [
         GameState.lives++;
         return true;
     }},
-    { name: 'Basic Shield', price: 75, action: () => {
-        GameState.usableItems.push({ type: 'shield', hits: 1 });
+    { name: 'Basic Shield (1 hit)', price: 75, action: () => {
+        GameState.usableItems.push('shield_1');
         return true;
     }},
-    { name: 'Steel Shield', price: 200, action: () => {
-        GameState.usableItems.push({ type: 'shield', hits: 3 });
+    { name: 'Steel Shield (3 hits)', price: 200, action: () => {
+        GameState.usableItems.push('shield_3');
         return true;
     }},
-    { name: 'Crystal Shield', price: 400, action: () => {
-        GameState.usableItems.push({ type: 'shield', hits: 5 });
+    { name: 'Crystal Shield (5 hits)', price: 400, action: () => {
+        GameState.usableItems.push('shield_5');
         return true;
     }},
     { name: 'Power Boost', price: 50, action: () => {
-        GameState.usableItems.push({ type: 'power_boost' });
+        GameState.usableItems.push('power_boost');
         return true;
     }},
     { name: '>>> CONTINUE >>>', price: 0, action: () => {
@@ -4060,7 +4103,10 @@ function updateUI() {
     // Usable items with keybinds - show stacked counts
     if (GameState.usableItems.length > 0) {
         const powerCount = GameState.usableItems.filter(i => i === 'power_boost').length;
-        const shieldCount = GameState.usableItems.filter(i => i === 'shield').length;
+        // Count all shield types
+        const shieldCount = GameState.usableItems.filter(i =>
+            i === 'shield' || i === 'shield_1' || i === 'shield_3' || i === 'shield_5'
+        ).length;
         const itemDisplay = [];
         if (powerCount > 0) itemDisplay.push(`[1]⭐Power×${powerCount}`);
         if (shieldCount > 0) itemDisplay.push(`[2]🛡Shield×${shieldCount}`);
@@ -4108,13 +4154,17 @@ function drawPowerUpStatus() {
         ctx.fillText(`⚡2xDMG 1.5xSPD ${Math.ceil(GameState.powerBoostTimer / 60)}s`, 8, yBase + 12);
     }
 
-    // Shield indicator
-    if (GameState.shieldTimer > 0) {
-        ctx.fillStyle = 'rgba(68, 136, 255, 0.8)';
-        ctx.fillRect(5, yBase + (GameState.powerBoostTimer > 0 ? 20 : 0), 80, 16);
+    // Shield indicator - show hits remaining
+    if (GameState.shieldTimer > 0 && GameState.shieldHits > 0) {
+        // Color based on hits remaining
+        const shieldColor = GameState.shieldHits >= 5 ? 'rgba(138, 43, 226, 0.9)' :
+                           GameState.shieldHits >= 3 ? 'rgba(100, 149, 237, 0.9)' :
+                           'rgba(68, 136, 255, 0.8)';
+        ctx.fillStyle = shieldColor;
+        ctx.fillRect(5, yBase + (GameState.powerBoostTimer > 0 ? 20 : 0), 95, 16);
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 10px Courier New';
-        ctx.fillText(`SHIELD ${Math.ceil(GameState.shieldTimer / 60)}s`, 10, yBase + 12 + (GameState.powerBoostTimer > 0 ? 20 : 0));
+        ctx.fillText(`🛡 SHIELD ×${GameState.shieldHits}`, 10, yBase + 12 + (GameState.powerBoostTimer > 0 ? 20 : 0));
     }
 
     // Shield visual effect around player
@@ -4695,6 +4745,7 @@ function resetToTitle() {
     GameState.usableItems = [];
     GameState.powerBoostTimer = 0;
     GameState.shieldTimer = 0;
+    GameState.shieldHits = 0;
     GameState.boss = null;
     GameState.bossDefeated = {};
     GameState.bossUnlocked = false;

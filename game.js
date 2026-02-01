@@ -1241,25 +1241,42 @@ const HOLD_THRESHOLD = 100; // ms before continuous movement activates
 document.addEventListener('keydown', (e) => {
     // Handle title screen input
     if (GameState.screenState === 'title') {
-        // Arrow keys to select option (only if act1 completed)
-        if (GameState.act1Complete) {
-            if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
-                GameState.titleSelection = GameState.titleSelection === 0 ? 1 : 0;
-                Audio8Bit.init(); // Ensure audio is ready for sound
-                Audio8Bit.playPickup();
-                e.preventDefault();
-                return;
-            }
+        // Arrow keys to select option
+        if (e.code === 'ArrowUp') {
+            GameState.titleSelection = (GameState.titleSelection - 1 + 3) % 3;
+            Audio8Bit.init();
+            Audio8Bit.playPickup();
+            e.preventDefault();
+            return;
+        }
+        if (e.code === 'ArrowDown') {
+            GameState.titleSelection = (GameState.titleSelection + 1) % 3;
+            Audio8Bit.init();
+            Audio8Bit.playPickup();
+            e.preventDefault();
+            return;
         }
         if (e.code === 'Enter' || e.code === 'Space') {
             GameState.screenState = 'playing';
             Audio8Bit.init();
             Audio8Bit.startMusic();
-            // If starting from level 4, set up accordingly
-            if (GameState.titleSelection === 1 && GameState.act1Complete) {
+            // Level 4 start
+            if (GameState.titleSelection === 1) {
                 Levels.loadLevel(4);
-                GameState.bossDefeated[3] = true; // Mark act 1 boss as done
-                GameState.coins = 200; // Give some starting coins
+                GameState.bossDefeated[3] = true;
+                GameState.coins = 200;
+                Player.init();
+                spawnEnemies();
+                updateUI();
+            }
+            // Level 6 start (DEBUG)
+            if (GameState.titleSelection === 2) {
+                Levels.loadLevel(6);
+                GameState.bossDefeated[3] = true;
+                GameState.bossDefeated[5] = true;
+                GameState.coins = 500;
+                GameState.health = 5;
+                GameState.maxHealth = 5;
                 Player.init();
                 spawnEnemies();
                 updateUI();
@@ -3344,7 +3361,9 @@ function updateProjectiles() {
                 Player.takeDamage();
                 return false; // Projectile consumed
             }
-            return p.life > 0 && p.x > -50 && p.x < GAME_WIDTH * 3 && p.y > -50 && p.y < GAME_HEIGHT;
+            // Use actual level width for bounds check (dream world can be very wide)
+            const maxX = tiles[0].length * TILE_SIZE + 100;
+            return p.life > 0 && p.x > -50 && p.x < maxX && p.y > -50 && p.y < GAME_HEIGHT;
         }
 
         // Check enemy collision
@@ -3373,7 +3392,9 @@ function updateProjectiles() {
             }
         }
 
-        return p.life > 0 && p.x > -50 && p.x < GAME_WIDTH * 3 && p.y > -50 && p.y < GAME_HEIGHT;
+        // Use actual level width for bounds check (dream world can be very wide)
+        const maxX = tiles[0].length * TILE_SIZE + 100;
+        return p.life > 0 && p.x > -50 && p.x < maxX && p.y > -50 && p.y < GAME_HEIGHT;
     });
 }
 
@@ -4606,18 +4627,16 @@ function drawTitleScreen() {
     ctx.textAlign = 'center';
     ctx.fillText('A Dual-Perspective Adventure', GAME_WIDTH / 2, startY + 70);
 
-    // Menu options
-    const options = GameState.act1Complete
-        ? ['START LEVEL 1', 'START LEVEL 4']
-        : ['START GAME'];
+    // Menu options - always show all 3 for testing
+    const options = ['LEVEL 1', 'LEVEL 4', 'LEVEL 6 (DEBUG)'];
 
     const btnWidth = 180;
-    const btnHeight = 40;
+    const btnHeight = 35;
     const btnX = (GAME_WIDTH - btnWidth) / 2;
-    const startBtnY = GameState.act1Complete ? 300 : 320;
+    const startBtnY = 290;
 
     for (let i = 0; i < options.length; i++) {
-        const btnY = startBtnY + i * 50;
+        const btnY = startBtnY + i * 42;
         const isSelected = GameState.titleSelection === i;
 
         // Button glow for selected
@@ -4643,23 +4662,22 @@ function drawTitleScreen() {
 
         // Button text
         ctx.fillStyle = isSelected ? '#fff' : '#999';
-        ctx.font = 'bold 18px Courier New';
-        ctx.fillText(options[i], GAME_WIDTH / 2, btnY + 26);
+        ctx.font = 'bold 16px Courier New';
+        ctx.fillText(options[i], GAME_WIDTH / 2, btnY + 23);
 
         // Selection arrow
-        if (isSelected && GameState.act1Complete) {
+        if (isSelected) {
             ctx.fillStyle = '#ff69b4';
-            ctx.fillText('>', btnX - 20, btnY + 26);
+            ctx.fillText('>', btnX - 20, btnY + 23);
         }
     }
 
     // Controls hint
-    const hintY = GameState.act1Complete ? 420 : 400;
+    const hintY = 430;
     ctx.fillStyle = '#888';
     ctx.font = '12px Courier New';
-    if (GameState.act1Complete) {
-        ctx.fillText('Use UP/DOWN to select, ENTER to start', GAME_WIDTH / 2, hintY);
-    } else {
+    ctx.fillText('UP/DOWN to select, ENTER to start', GAME_WIDTH / 2, hintY);
+    if (false) {
         ctx.fillText('Press ENTER or SPACE to start', GAME_WIDTH / 2, hintY);
     }
     ctx.fillText('ESC to pause during game', GAME_WIDTH / 2, hintY + 20);

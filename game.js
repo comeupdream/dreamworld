@@ -1280,6 +1280,9 @@ document.addEventListener('keydown', (e) => {
         }
         if (e.code === 'Enter' || e.code === 'Space') {
             GameState.screenState = 'playing';
+            // Reset timing to ensure consistent game speed
+            lastFrameTime = 0;
+            accumulatedTime = 0;
             Audio8Bit.init();
             Audio8Bit.startMusic();
             // Level 4 start
@@ -1380,6 +1383,9 @@ function handlePauseSelection() {
 }
 
 function restartGame() {
+    // Reset timing to prevent accumulated time issues
+    lastFrameTime = 0;
+    accumulatedTime = 0;
     Levels.loadLevel(1);
     Player.init();
     GameState.health = 3;
@@ -5146,19 +5152,42 @@ function drawPauseMenu() {
 // Initialize pause menu state
 GameState.pauseSelection = 0;
 
-function gameLoop() {
-    if (GameState.screenState === 'playing' && !GameState.gameOver && !GameState.inShop) {
-        update();
+// Delta time for consistent timing across all refresh rates
+let lastFrameTime = 0;
+let accumulatedTime = 0;
+const TARGET_FRAME_TIME = 1000 / 60; // 60 FPS = 16.67ms per frame
+
+function gameLoop(currentTime) {
+    // Calculate delta time
+    if (lastFrameTime === 0) lastFrameTime = currentTime;
+    const deltaTime = currentTime - lastFrameTime;
+    lastFrameTime = currentTime;
+
+    // Accumulate time and run updates at fixed 60 FPS rate
+    accumulatedTime += deltaTime;
+
+    // Cap accumulated time to prevent spiral of death on tab switch
+    if (accumulatedTime > TARGET_FRAME_TIME * 4) {
+        accumulatedTime = TARGET_FRAME_TIME * 4;
     }
 
-    // Handle game over animation (slowed by 0.5x)
-    if (GameState.gameOver) {
-        GameState.gameOverTimer++;
-
-        // After 360 frames (6 seconds), reset to title
-        if (GameState.gameOverTimer > 360) {
-            resetToTitle();
+    // Run fixed timestep updates
+    while (accumulatedTime >= TARGET_FRAME_TIME) {
+        if (GameState.screenState === 'playing' && !GameState.gameOver && !GameState.inShop) {
+            update();
         }
+
+        // Handle game over animation
+        if (GameState.gameOver) {
+            GameState.gameOverTimer++;
+
+            // After 360 frames (6 seconds), reset to title
+            if (GameState.gameOverTimer > 360) {
+                resetToTitle();
+            }
+        }
+
+        accumulatedTime -= TARGET_FRAME_TIME;
     }
 
     draw();
@@ -5169,6 +5198,9 @@ function resetToTitle() {
     // Full reset
     GameState.gameOver = false;
     GameState.gameOverTimer = 0;
+    // Reset timing to prevent accumulated time issues
+    lastFrameTime = 0;
+    accumulatedTime = 0;
     GameState.maxHealth = 3;
     GameState.health = GameState.maxHealth;
     GameState.lives = 2;

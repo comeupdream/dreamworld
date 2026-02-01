@@ -1954,14 +1954,14 @@ const Player = {
             if (GameState.shieldHits <= 0) {
                 GameState.shieldTimer = 0; // Shield depleted
             }
-            GameState.invincible = 30;
+            GameState.invincible = 60; // Doubled for high refresh
             Audio8Bit.playHit(); // Feedback for shield absorbing hit
             updateUI();
             return;
         }
 
         GameState.health--;
-        GameState.invincible = 60; // 1 second invincibility
+        GameState.invincible = 120; // 1 second invincibility (doubled for high refresh)
         Audio8Bit.playDamage();
         if (GameState.health <= 0) {
             // Player died - check lives
@@ -2627,10 +2627,10 @@ const BossTemplates = {
         spawnX: 75, // Near end of dream world level 6
         spawnY: 5,  // Mid-height
         type: 'specter',
-        teleportCooldown: 180, // 3 seconds between teleports
-        shootCooldown: 120,   // 2 seconds between shots
-        shieldCooldown: 480,  // 8 seconds between shield phases
-        burstCooldown: 300    // 5 seconds between electric bursts
+        teleportCooldown: 360, // 6 seconds between teleports
+        shootCooldown: 240,   // 4 seconds between shots
+        shieldCooldown: 960,  // 16 seconds between shield phases
+        burstCooldown: 600    // 10 seconds between electric bursts
     }
 };
 
@@ -2718,7 +2718,7 @@ function damageBoss(damage) {
     // Void Specter: Track recent damage for revenge teleport
     if (boss.type === 'specter') {
         boss.recentDamage += actualDamage;
-        boss.damageTimer = 60; // 1 second window
+        boss.damageTimer = 120; // 1 second window (doubled for high refresh)
     }
 
     // Phase transitions at HP thresholds
@@ -2806,7 +2806,7 @@ function updateVoidSpecter(boss) {
         if (boss.shieldTimer <= 0) {
             // Activate shield!
             boss.isShielded = true;
-            boss.shieldChargeTime = 120; // 2 seconds of charging
+            boss.shieldChargeTime = 240; // 2 seconds of charging (doubled for high refresh)
             Audio8Bit.playPickup(); // Shield activation sound
         }
     } else {
@@ -2847,7 +2847,7 @@ function updateVoidSpecter(boss) {
     boss.burstTimer--;
     if (boss.burstTimer <= 0 && boss.burstActive <= 0) {
         // Start electric burst!
-        boss.burstActive = 30; // Half second of active burst
+        boss.burstActive = 60; // Half second of active burst (doubled for high refresh)
         Audio8Bit.playHit();
     }
 
@@ -3253,7 +3253,7 @@ function drawVoidSpecter(boss) {
     if (boss.isShielded) {
         // Pulsing hexagonal shield barrier
         const shieldRadius = radius + 20 + Math.sin(time * 8) * 5;
-        const chargeProgress = 1 - (boss.shieldChargeTime / 120); // 0 to 1
+        const chargeProgress = 1 - (boss.shieldChargeTime / 240); // 0 to 1
 
         // Outer shield ring
         ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 + chargeProgress * 0.5})`;
@@ -3298,7 +3298,7 @@ function drawVoidSpecter(boss) {
 
     // === ELECTRIC BURST VISUAL ===
     if (boss.burstActive > 0) {
-        const burstProgress = boss.burstActive / 30; // 1 to 0
+        const burstProgress = boss.burstActive / 60; // 1 to 0
         const burstRadius = 100;
 
         // Electric field effect
@@ -3859,7 +3859,7 @@ function useItem(slot) {
         const itemIndex = GameState.usableItems.indexOf('power_boost');
         if (itemIndex === -1) return;
         GameState.usableItems.splice(itemIndex, 1);
-        GameState.powerBoostTimer = 900; // 15 seconds - 2x DMG, 1.5x SPD
+        GameState.powerBoostTimer = 1800; // 15 seconds - 2x DMG, 1.5x SPD (doubled for high refresh)
     } else {
         // Shield - find any shield type (prefer stronger ones)
         let shieldIndex = GameState.usableItems.findIndex(i => i === 'shield_5');
@@ -3890,7 +3890,7 @@ function useWorldPower() {
     if (GameState.currentWorld === 'real' && GameState.dreamEssence > 0) {
         // Dream Essence: Power boost + heal
         GameState.dreamEssence--;
-        GameState.powerBoostTimer = Math.max(GameState.powerBoostTimer, 600); // 10 seconds
+        GameState.powerBoostTimer = Math.max(GameState.powerBoostTimer, 1200); // 10 seconds (doubled for high refresh)
         // Also heal 1 HP
         if (GameState.health < GameState.maxHealth) {
             GameState.health++;
@@ -3899,8 +3899,8 @@ function useWorldPower() {
     } else if (GameState.currentWorld === 'dream' && GameState.realEnergy > 0) {
         // Real Energy: Invincibility + shield
         GameState.realEnergy--;
-        GameState.invincible = Math.max(GameState.invincible, 300); // 5 seconds invincibility
-        GameState.shieldTimer = Math.max(GameState.shieldTimer, 600); // 10 seconds shield
+        GameState.invincible = Math.max(GameState.invincible, 600); // 5 seconds invincibility (doubled for high refresh)
+        GameState.shieldTimer = Math.max(GameState.shieldTimer, 1200); // 10 seconds shield (doubled for high refresh)
         updateUI();
     }
 }
@@ -4570,7 +4570,7 @@ function drawPowerUpStatus() {
         ctx.fillRect(5, yBase, 110, 16);
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 10px Courier New';
-        ctx.fillText(`⚡2xDMG 1.5xSPD ${Math.ceil(GameState.powerBoostTimer / 60)}s`, 8, yBase + 12);
+        ctx.fillText(`⚡2xDMG 1.5xSPD ${Math.ceil(GameState.powerBoostTimer / 120)}s`, 8, yBase + 12);
     }
 
     // Shield indicator - show hits remaining

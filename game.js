@@ -1119,18 +1119,21 @@ const LevelTemplates = {
                 { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
                 { x: 50, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 }
             ],
-            // Level 5: 15% harder than L2
+            // Level 5: 15% harder than L2, introduces Void Orbs
             5: [
                 { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
                 { x: 30, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38, variant: 'shadow' },
                 { x: 45, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
-                { x: 60, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 }
+                { x: 60, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
+                { x: 50, y: 5, type: 'voidorb', patrol: 'horizontal', range: 3, speed: 0.5 }
             ],
-            // Level 6: Boss gauntlet - all shadows
+            // Level 6: Boss gauntlet - all shadows + void orbs
             6: [
                 { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
                 { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.61, variant: 'shadow' },
-                { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.84, variant: 'shadow' }
+                { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.84, variant: 'shadow' },
+                { x: 25, y: 4, type: 'voidorb', patrol: 'horizontal', range: 4, speed: 0.5 },
+                { x: 50, y: 4, type: 'voidorb', patrol: 'horizontal', range: 3, speed: 0.6 }
             ]
         }
     },
@@ -2164,24 +2167,33 @@ function spawnEnemies() {
             const variant = e.variant || 'normal';
             const hp = variant === 'shadow' ? 2 : 1;
 
+            // Void orbs are slightly smaller and have shooting capability
+            const isVoidOrb = e.type === 'voidorb';
+            const enemyWidth = isVoidOrb ? 20 : 22;
+            const enemyHeight = isVoidOrb ? 20 : 22;
+            const enemyHp = isVoidOrb ? 2 : hp; // Void orbs have 2 HP
+
             GameState.enemies.push({
                 x: e.x * TILE_SIZE + 2,
                 y: e.y * TILE_SIZE + 2,
                 startX: e.x * TILE_SIZE + 2,
                 startY: e.y * TILE_SIZE + 2,
-                width: 22,
-                height: 22,
+                width: enemyWidth,
+                height: enemyHeight,
                 type: e.type || 'patrol',
-                variant: variant, // 'normal' or 'shadow'
-                hp: hp,
-                maxHp: hp,
+                variant: isVoidOrb ? 'voidorb' : variant, // 'normal', 'shadow', or 'voidorb'
+                hp: enemyHp,
+                maxHp: enemyHp,
                 patrol: e.patrol || 'horizontal',
                 range: (e.range || 2) * TILE_SIZE,
                 speed: e.speed || 1.0,
                 direction: 1,
                 chaseAxis: 'x', // For chase enemies: which axis to move on
                 world: world,
-                templateIndex: index // Track which template enemy this is
+                templateIndex: index, // Track which template enemy this is
+                shootTimer: isVoidOrb ? 180 : 0, // Void orbs shoot every 3 seconds
+                shootCooldown: 180, // 3 second cooldown
+                plasmaPhase: Math.random() * Math.PI * 2 // For animation
             });
         });
     }
@@ -2330,6 +2342,34 @@ function updateEnemies() {
             }
         }
 
+        // Void orb shooting behavior
+        if (enemy.type === 'voidorb') {
+            enemy.plasmaPhase += 0.05; // Animate plasma
+            enemy.shootTimer--;
+            if (enemy.shootTimer <= 0) {
+                // Shoot a slow dark orb at player
+                const centerX = enemy.x + enemy.width / 2;
+                const centerY = enemy.y + enemy.height / 2;
+                const dx = Player.x + Player.width/2 - centerX;
+                const dy = Player.y + Player.height/2 - centerY;
+                const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                const speed = 1.5; // Very slow projectile
+
+                GameState.projectiles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: (dx / dist) * speed,
+                    vy: (dy / dist) * speed,
+                    isEnemyProjectile: true,
+                    isDarkOrb: true,
+                    life: 240, // 4 seconds lifetime
+                    isSmallOrb: true // Smaller visual
+                });
+
+                enemy.shootTimer = enemy.shootCooldown;
+            }
+        }
+
         // Check collision with player
         const playerRect = Player.getRect();
         const enemyRect = { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height };
@@ -2356,6 +2396,64 @@ function drawEnemies() {
 
         const centerX = drawX + enemy.width / 2;
         const centerY = drawY + enemy.height / 2;
+
+        // Void Orb - mini plasma ball like the boss
+        if (enemy.variant === 'voidorb') {
+            const time = enemy.plasmaPhase || 0;
+            const radius = 8;
+
+            // Hit flash override
+            if (enemy.hitFlash > 0) {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius + 2, 0, Math.PI * 2);
+                ctx.fill();
+                return;
+            }
+
+            // Outer glow
+            ctx.fillStyle = 'rgba(75, 0, 130, 0.4)';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius + 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Core plasma ball
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            gradient.addColorStop(0, '#ff44ff');
+            gradient.addColorStop(0.4, '#9900ff');
+            gradient.addColorStop(0.8, '#4b0082');
+            gradient.addColorStop(1, '#1a0033');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 4 mini electric tentacles
+            ctx.strokeStyle = '#cc66ff';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2 + time;
+                const len = 8 + Math.sin(time * 2 + i) * 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                // Add some jitter for electric effect
+                const midX = centerX + Math.cos(angle) * len * 0.5 + (Math.random() - 0.5) * 2;
+                const midY = centerY + Math.sin(angle) * len * 0.5 + (Math.random() - 0.5) * 2;
+                const endX = centerX + Math.cos(angle) * len;
+                const endY = centerY + Math.sin(angle) * len;
+                ctx.lineTo(midX, midY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+
+            // Inner bright core
+            ctx.fillStyle = 'rgba(255, 200, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(centerX - 2, centerY - 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+        }
+
         const radius = 9;
         const waveTime = Date.now() * 0.01;
         const isReal = GameState.currentWorld === 'real';
@@ -2491,7 +2589,7 @@ const BossTemplates = {
         spawnY: 5,  // Mid-height
         type: 'specter',
         teleportCooldown: 180, // 3 seconds between teleports
-        shootCooldown: 60     // 1 second between shots
+        shootCooldown: 120    // 2 seconds between shots (slowed 50%)
     }
 };
 
@@ -2673,7 +2771,7 @@ function updateVoidSpecter(boss) {
             const baseAngle = Math.atan2(dy, dx);
             const angle = baseAngle + spreadAngle;
 
-            const speed = 4 + boss.phase; // Gets faster in later phases
+            const speed = 2 + boss.phase * 0.5; // Slower projectiles (50% nerf)
 
             // Add to projectiles as enemy projectile
             GameState.projectiles.push({
@@ -3542,27 +3640,29 @@ function drawProjectiles() {
         const drawX = p.x - cameraOffset;
         const drawY = p.y + yOffset;
 
-        // Dark orb from Void Specter
+        // Dark orb from Void Specter or Void Orb enemies
         if (p.isDarkOrb) {
+            // Small orbs from void orb enemies are 60% size
+            const scale = p.isSmallOrb ? 0.6 : 1.0;
             // Outer glow
             ctx.fillStyle = 'rgba(75, 0, 130, 0.5)';
             ctx.beginPath();
-            ctx.arc(drawX, drawY, 12, 0, Math.PI * 2);
+            ctx.arc(drawX, drawY, 12 * scale, 0, Math.PI * 2);
             ctx.fill();
             // Main orb
             ctx.fillStyle = '#4b0082';
             ctx.beginPath();
-            ctx.arc(drawX, drawY, 8, 0, Math.PI * 2);
+            ctx.arc(drawX, drawY, 8 * scale, 0, Math.PI * 2);
             ctx.fill();
             // Core
             ctx.fillStyle = '#9932cc';
             ctx.beginPath();
-            ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
+            ctx.arc(drawX, drawY, 5 * scale, 0, Math.PI * 2);
             ctx.fill();
             // Bright center
             ctx.fillStyle = '#da70d6';
             ctx.beginPath();
-            ctx.arc(drawX, drawY, 2, 0, Math.PI * 2);
+            ctx.arc(drawX, drawY, 2 * scale, 0, Math.PI * 2);
             ctx.fill();
             return;
         }
@@ -3941,8 +4041,9 @@ function switchWorld() {
 }
 
 function enterDoor() {
-    // Don't process if boss is already active
+    // Don't process if boss is already active or already unlocked
     if (GameState.boss && GameState.boss.active) return;
+    if (GameState.bossUnlocked && !GameState.bossDefeated[Levels.current]) return;
 
     // Check if this is a boss level - same logic as reachGoal
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
@@ -3962,8 +4063,9 @@ function enterDoor() {
 }
 
 function reachGoal() {
-    // Don't process if boss is already active
+    // Don't process if boss is already active or already unlocked (prevents repeated calls)
     if (GameState.boss && GameState.boss.active) return;
+    if (GameState.bossUnlocked && !GameState.bossDefeated[Levels.current]) return;
 
     // Check if this is a boss level
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
@@ -4770,7 +4872,7 @@ function drawPauseMenu() {
 GameState.pauseSelection = 0;
 
 function gameLoop() {
-    if (GameState.screenState === 'playing' && !GameState.gameOver) {
+    if (GameState.screenState === 'playing' && !GameState.gameOver && !GameState.inShop) {
         update();
     }
 

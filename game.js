@@ -5,13 +5,14 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game dimensions
-const GAME_WIDTH = 640;
-const REAL_WORLD_HEIGHT = 320; // 10 tiles - SQUARE
-const DREAM_WORLD_HEIGHT = 192; // 6 tiles - shorter for sidescroller
+// Game dimensions - Real World is 10x10 SQUARE, Dream World same width
+const TILE_SIZE = 32;
+const REAL_WORLD_TILES = 10; // 10x10 square like a chessboard
+const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 320px - matches square width
+const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 320px - square
+const DREAM_WORLD_HEIGHT = 6 * TILE_SIZE; // 192px - shorter for sidescroller
 const DIVIDER_HEIGHT = 8;
 const GAME_HEIGHT = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT + DREAM_WORLD_HEIGHT;
-const TILE_SIZE = 32;
 
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
@@ -1032,4 +1033,4 @@ Player.init();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v0.7 - Slower Pokemon-style stepping + fixed goal/landing');
+console.log('Dreamworld v0.8 - Square Real World (320x320) + matching viewports');

@@ -1011,30 +1011,13 @@ function updateProjectiles() {
 // ============================================
 
 function spawnDrop(x, y, enemyType) {
-    // Determine drop type based on world and chance
-    const roll = Math.random();
-    let dropType;
-
-    if (GameState.currentWorld === 'real') {
-        // Real World drops: coins, health, dream essence
-        if (roll < 0.3) dropType = 'coin';
-        else if (roll < 0.45) dropType = 'health';
-        else if (roll < 0.6) dropType = 'dream_essence';
-        else if (roll < 0.7) dropType = 'power_boost';
-        else return; // No drop (30% chance)
-    } else {
-        // Dream World drops: coins, health, real energy
-        if (roll < 0.3) dropType = 'coin';
-        else if (roll < 0.45) dropType = 'health';
-        else if (roll < 0.6) dropType = 'real_energy';
-        else if (roll < 0.7) dropType = 'shield';
-        else return; // No drop (30% chance)
-    }
+    // Simple drop - 40% chance to drop a heart
+    if (Math.random() > 0.4) return;
 
     GameState.drops.push({
         x: x,
         y: y,
-        type: dropType,
+        type: 'health',
         life: 300, // Disappears after 5 seconds
         bobOffset: Math.random() * Math.PI * 2
     });
@@ -1059,41 +1042,11 @@ function updateDrops() {
 }
 
 function collectDrop(drop) {
-    switch (drop.type) {
-        case 'coin':
-            GameState.score += 50;
-            break;
-        case 'health':
-            if (GameState.health < GameState.maxHealth) {
-                GameState.health++;
-            } else {
-                GameState.score += 25; // Bonus points if at full health
-            }
-            break;
-        case 'dream_essence':
-            GameState.dreamEssence++;
-            GameState.score += 25;
-            break;
-        case 'real_energy':
-            GameState.realEnergy++;
-            GameState.score += 25;
-            break;
-        case 'power_boost':
-            // Add to usable items
-            if (GameState.usableItems.length < 3) {
-                GameState.usableItems.push('power_boost');
-            } else {
-                GameState.score += 75;
-            }
-            break;
-        case 'shield':
-            // Add to usable items
-            if (GameState.usableItems.length < 3) {
-                GameState.usableItems.push('shield');
-            } else {
-                GameState.score += 75;
-            }
-            break;
+    // Health pickup
+    if (GameState.health < GameState.maxHealth) {
+        GameState.health++;
+    } else {
+        GameState.score += 25; // Bonus points if at full health
     }
     updateUI();
 }
@@ -1112,96 +1065,17 @@ function drawDrops() {
         // Flash when about to disappear
         if (drop.life < 60 && Math.floor(drop.life / 8) % 2 === 0) return;
 
-        switch (drop.type) {
-            case 'coin':
-                // Gold coin
-                ctx.fillStyle = '#ffd700';
-                ctx.beginPath();
-                ctx.arc(drawX, drawY, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#ffaa00';
-                ctx.beginPath();
-                ctx.arc(drawX - 1, drawY - 1, 3, 0, Math.PI * 2);
-                ctx.fill();
-                break;
-            case 'health':
-                // Red heart
-                ctx.fillStyle = '#ff4444';
-                ctx.beginPath();
-                ctx.arc(drawX - 3, drawY - 2, 4, 0, Math.PI * 2);
-                ctx.arc(drawX + 3, drawY - 2, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(drawX - 7, drawY);
-                ctx.lineTo(drawX, drawY + 8);
-                ctx.lineTo(drawX + 7, drawY);
-                ctx.fill();
-                break;
-            case 'dream_essence':
-                // Purple swirl
-                ctx.fillStyle = '#cc66ff';
-                ctx.beginPath();
-                ctx.arc(drawX, drawY, 7, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#ff99ff';
-                ctx.beginPath();
-                const swirl = Date.now() * 0.01;
-                ctx.arc(drawX + Math.cos(swirl) * 3, drawY + Math.sin(swirl) * 3, 3, 0, Math.PI * 2);
-                ctx.fill();
-                break;
-            case 'real_energy':
-                // Green energy orb
-                ctx.fillStyle = '#44ff44';
-                ctx.beginPath();
-                ctx.arc(drawX, drawY, 7, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#aaffaa';
-                ctx.beginPath();
-                const pulse = Date.now() * 0.01;
-                ctx.arc(drawX + Math.cos(pulse) * 3, drawY + Math.sin(pulse) * 3, 3, 0, Math.PI * 2);
-                ctx.fill();
-                break;
-            case 'power_boost':
-                // Orange star
-                ctx.fillStyle = '#ff8800';
-                ctx.save();
-                ctx.translate(drawX, drawY);
-                ctx.rotate(Date.now() * 0.003);
-                for (let i = 0; i < 5; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -8);
-                    ctx.lineTo(2, -3);
-                    ctx.lineTo(7, -3);
-                    ctx.lineTo(3, 1);
-                    ctx.lineTo(5, 7);
-                    ctx.lineTo(0, 3);
-                    ctx.lineTo(-5, 7);
-                    ctx.lineTo(-3, 1);
-                    ctx.lineTo(-7, -3);
-                    ctx.lineTo(-2, -3);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-                ctx.restore();
-                break;
-            case 'shield':
-                // Blue shield
-                ctx.fillStyle = '#4488ff';
-                ctx.beginPath();
-                ctx.moveTo(drawX, drawY - 8);
-                ctx.lineTo(drawX + 7, drawY - 4);
-                ctx.lineTo(drawX + 7, drawY + 2);
-                ctx.lineTo(drawX, drawY + 8);
-                ctx.lineTo(drawX - 7, drawY + 2);
-                ctx.lineTo(drawX - 7, drawY - 4);
-                ctx.closePath();
-                ctx.fill();
-                ctx.fillStyle = '#88bbff';
-                ctx.beginPath();
-                ctx.arc(drawX, drawY, 3, 0, Math.PI * 2);
-                ctx.fill();
-                break;
-        }
+        // Red heart
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(drawX - 3, drawY - 2, 4, 0, Math.PI * 2);
+        ctx.arc(drawX + 3, drawY - 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(drawX - 7, drawY);
+        ctx.lineTo(drawX, drawY + 8);
+        ctx.lineTo(drawX + 7, drawY);
+        ctx.fill();
     });
 }
 

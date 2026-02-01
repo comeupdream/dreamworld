@@ -35,6 +35,7 @@ const Audio8Bit = {
     sfxGain: null,
     musicPlaying: false,
     musicNodes: [],
+    musicLoopTimeout: null, // Track the loop timeout
 
     init() {
         try {
@@ -477,8 +478,13 @@ const Audio8Bit = {
 
     // 8-bit space trap music track
     startMusic() {
-        if (!this.ctx || this.musicPlaying) return;
+        if (!this.ctx) return;
+        // Stop any existing music first
+        if (this.musicPlaying) {
+            this.stopMusic();
+        }
         this.resume();
+        this.restoreMusic(); // Restore volume in case it was muted
         this.musicPlaying = true;
 
         // Music parameters - slow spacey trap
@@ -601,8 +607,8 @@ const Audio8Bit = {
                 });
             }
 
-            // Schedule next loop
-            setTimeout(() => scheduleMusic(), (loopLength - 0.1) * 1000);
+            // Schedule next loop (store timeout so we can cancel it)
+            this.musicLoopTimeout = setTimeout(() => scheduleMusic(), (loopLength - 0.1) * 1000);
         };
 
         scheduleMusic();
@@ -797,6 +803,22 @@ const Audio8Bit = {
 
     stopMusic() {
         this.musicPlaying = false;
+        // Cancel the loop timeout
+        if (this.musicLoopTimeout) {
+            clearTimeout(this.musicLoopTimeout);
+            this.musicLoopTimeout = null;
+        }
+        // Mute music gain to stop any currently playing notes
+        if (this.musicGain) {
+            this.musicGain.gain.setValueAtTime(0, this.ctx.currentTime);
+        }
+    },
+
+    // Restore music volume when restarting
+    restoreMusic() {
+        if (this.musicGain) {
+            this.musicGain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        }
     },
 
     setMusicVolume(vol) {
@@ -3777,7 +3799,7 @@ function drawProjectiles() {
 const RealWorld = {
     draw() {
         const tiles = Levels.getReal();
-        ctx.fillStyle = '#1a0800'; // Dark orange-tinted background
+        ctx.fillStyle = '#331400'; // Dark orange background (20% lighter)
         ctx.fillRect(0, 0, GAME_WIDTH, REAL_WORLD_HEIGHT);
 
         for (let y = 0; y < tiles.length; y++) {
@@ -3847,7 +3869,7 @@ const RealWorld = {
                 // Open door - orange frame with dark opening
                 ctx.fillStyle = '#994400';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#1a0800';
+                ctx.fillStyle = '#331400';
                 ctx.fillRect(px + 6*s, py + 2, TILE_SIZE - 12*s, TILE_SIZE - 2);
                 break;
         }

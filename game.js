@@ -775,7 +775,10 @@ const GameState = {
     shieldTimer: 0,     // Active shield countdown
     // Boss system
     boss: null,         // Current boss object
-    bossDefeated: {}    // Track defeated bosses by level
+    bossDefeated: {},   // Track defeated bosses by level
+    bossUnlocked: false, // True after reaching dream goal on boss level
+    // Life system
+    lives: 2            // Extra lives (2 = 3 total chances per level)
 };
 
 // ============================================
@@ -862,6 +865,7 @@ function restartGame() {
     Levels.loadLevel(1);
     Player.init();
     GameState.health = 3;
+    GameState.lives = 2;
     GameState.score = 0;
     GameState.inventory = [];
     GameState.usableItems = [];
@@ -875,6 +879,7 @@ function restartGame() {
     GameState.shieldTimer = 0;
     GameState.boss = null;
     GameState.bossDefeated = {};
+    GameState.bossUnlocked = false;
     spawnEnemies();
     updateUI();
 }
@@ -1410,14 +1415,48 @@ const Player = {
         GameState.invincible = 60; // 1 second invincibility
         Audio8Bit.playDamage();
         if (GameState.health <= 0) {
-            // Reset level (but keep killed enemies tracked)
-            GameState.health = GameState.maxHealth;
-            GameState.inventory = [];
-            GameState.drops = [];
-            Levels.loadLevel(Levels.current);
-            spawnEnemies();
-            this.init();
-            GameState.cameraX = 0;
+            // Player died - check lives
+            if (GameState.lives > 0) {
+                // Use a life and respawn in current level
+                GameState.lives--;
+                GameState.health = GameState.maxHealth;
+                GameState.inventory = [];
+                GameState.drops = [];
+                GameState.projectiles = [];
+                Levels.loadLevel(Levels.current);
+                spawnEnemies();
+                this.init();
+                GameState.cameraX = 0;
+
+                // Reset boss HP if boss exists (but keep unlocked status)
+                if (GameState.boss) {
+                    GameState.boss.hp = GameState.boss.maxHp;
+                    GameState.boss.phase = 1;
+                    GameState.boss.speed = 1.5;
+                    GameState.boss.hitFlash = 0;
+                }
+            } else {
+                // Game over - reset to level 1
+                GameState.health = GameState.maxHealth;
+                GameState.lives = 2;
+                GameState.score = 0;
+                GameState.inventory = [];
+                GameState.drops = [];
+                GameState.projectiles = [];
+                GameState.killedEnemies = { real: {}, dream: {} };
+                GameState.dreamEssence = 0;
+                GameState.realEnergy = 0;
+                GameState.usableItems = [];
+                GameState.powerBoostTimer = 0;
+                GameState.shieldTimer = 0;
+                GameState.boss = null;
+                GameState.bossDefeated = {};
+                GameState.bossUnlocked = false;
+                Levels.loadLevel(1);
+                spawnEnemies();
+                this.init();
+                GameState.cameraX = 0;
+            }
         }
         updateUI();
     },
@@ -1895,8 +1934,8 @@ const BossTemplates = {
         width: 44,  // About 2x ghost size (ghost is 22px)
         height: 44,
         world: 'real', // Boss appears in real world - more room to fight!
-        speed: 1.5,
-        patterns: ['bounce', 'charge', 'spawn'],
+        speed: 0.8,  // Nerfed: slower base speed (was 1.5)
+        patterns: ['roam', 'charge'],
         spawnX: 10, // Center of real world grid
         spawnY: 10
     }
@@ -1943,13 +1982,13 @@ function damageBoss(damage) {
     boss.hp -= damage;
     boss.hitFlash = 15;
 
-    // Phase transitions at HP thresholds
+    // Phase transitions at HP thresholds (nerfed speeds)
     if (boss.hp <= boss.maxHp * 0.3 && boss.phase < 3) {
         boss.phase = 3;
-        boss.speed = 3;
+        boss.speed = 1.4; // Nerfed from 3
     } else if (boss.hp <= boss.maxHp * 0.6 && boss.phase < 2) {
         boss.phase = 2;
-        boss.speed = 2.2;
+        boss.speed = 1.1; // Nerfed from 2.2
     }
 
     if (boss.hp <= 0) {
@@ -2009,21 +2048,21 @@ function updateBoss() {
             boss.vy = (Math.random() - 0.5) * boss.speed * 2;
         }
 
-        // Occasionally switch to charge pattern (more often in later phases)
-        const chargeChance = boss.phase >= 3 ? 120 : boss.phase >= 2 ? 180 : 300;
+        // Occasionally switch to charge pattern (nerfed: less frequent)
+        const chargeChance = boss.phase >= 3 ? 240 : boss.phase >= 2 ? 360 : 480;
         if (boss.patternTimer > chargeChance) {
             boss.pattern = 'charge';
             boss.patternTimer = 0;
             boss.chargeTarget = { x: Player.x, y: Player.y };
         }
     } else if (boss.pattern === 'charge') {
-        // Charge toward player's position
+        // Charge toward player's position (nerfed: slower charge)
         const dx = boss.chargeTarget.x - boss.x;
         const dy = boss.chargeTarget.y - boss.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
 
         if (dist > 5) {
-            const chargeSpeed = boss.speed * (2 + boss.phase);
+            const chargeSpeed = boss.speed * (1.5 + boss.phase * 0.5); // Nerfed from (2 + boss.phase)
             boss.x += (dx / dist) * chargeSpeed;
             boss.y += (dy / dist) * chargeSpeed;
         }
@@ -2032,8 +2071,8 @@ function updateBoss() {
         boss.x = Math.max(minX, Math.min(maxX, boss.x));
         boss.y = Math.max(minY, Math.min(maxY, boss.y));
 
-        // Return to roam after charge duration
-        const chargeDuration = boss.phase >= 3 ? 45 : 60;
+        // Return to roam after charge duration (shorter charge time)
+        const chargeDuration = boss.phase >= 3 ? 30 : 40;
         if (boss.patternTimer > chargeDuration) {
             boss.pattern = 'roam';
             boss.patternTimer = 0;
@@ -2927,8 +2966,8 @@ function switchWorld() {
         Player.isMoving = false;
         Player.moveProgress = 0;
 
-        // Check if this level has a boss and spawn it in real world
-        if (LevelTemplates.bossLevels.includes(Levels.current)) {
+        // Spawn boss only if unlocked (player reached dream goal first)
+        if (GameState.bossUnlocked && !GameState.bossDefeated[Levels.current]) {
             spawnBoss(Levels.current);
         }
     }
@@ -2941,6 +2980,14 @@ function enterDoor() {
 }
 
 function reachGoal() {
+    // Check if this is a boss level
+    if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
+        // Unlock boss - player must return to real world to fight
+        GameState.bossUnlocked = true;
+        // Show message hint (could add visual later)
+        console.log('Boss unlocked! Return to the portal to face the Nightmare Kuriboh!');
+        return; // Don't complete level yet
+    }
     completeLevel();
 }
 
@@ -2948,19 +2995,18 @@ function completeLevel() {
     GameState.projectiles = [];
     GameState.drops = [];
     GameState.boss = null; // Clear any existing boss
+    GameState.bossUnlocked = false; // Reset for next level
 
     if (Levels.nextLevel()) {
-        // Progress to next level - reset killed enemies for new level
+        // Progress to next level - reset for new level
         GameState.currentWorld = 'real';
         GameState.inventory = [];
         GameState.cameraX = 0;
+        GameState.lives = 2; // Reset lives for new level
         // Keep score, essence, energy, and usable items!
         Player.init();
         spawnEnemies();
-        // Spawn boss if this is a boss level
-        if (LevelTemplates.bossLevels.includes(Levels.current)) {
-            spawnBoss(Levels.current);
-        }
+        // Boss will spawn when player unlocks it (reaches dream goal then returns)
         updateUI();
     } else {
         // Game complete - show victory and restart
@@ -2972,6 +3018,7 @@ function completeLevel() {
             GameState.inventory = [];
             GameState.cameraX = 0;
             GameState.health = GameState.maxHealth;
+            GameState.lives = 2;
             // Reset all progress on game restart
             GameState.score = 0;
             GameState.killedEnemies = { real: {}, dream: {} };
@@ -2982,6 +3029,7 @@ function completeLevel() {
             GameState.shieldTimer = 0;
             GameState.boss = null;
             GameState.bossDefeated = {};
+            GameState.bossUnlocked = false;
             Player.init();
             spawnEnemies();
             updateUI();
@@ -3005,11 +3053,12 @@ function updateUI() {
         indicator.className = 'dream-world';
     }
 
-    // Health and resources
+    // Health, lives, and resources
     const hp = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
+    const lives = ` | LIVES: ${GameState.lives}`;
     const essence = GameState.dreamEssence > 0 ? ` | 💜×${GameState.dreamEssence}` : '';
     const energy = GameState.realEnergy > 0 ? ` | 💚×${GameState.realEnergy}` : '';
-    hintsEl.textContent = hp + essence + energy;
+    hintsEl.textContent = hp + lives + essence + energy;
 
     // Inventory: Keys + Usable items
     let invText = '';

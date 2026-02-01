@@ -781,7 +781,10 @@ const GameState = {
     lives: 2,           // Extra lives (2 = 3 total chances per level)
     // Message system
     messageText: '',    // Current message to display
-    messageTimer: 0     // How long to show message
+    messageTimer: 0,    // How long to show message
+    // Game over system
+    gameOver: false,    // True when showing game over screen
+    gameOverTimer: 0    // Animation timer for game over
 };
 
 // ============================================
@@ -1455,27 +1458,9 @@ const Player = {
                     GameState.boss.hitFlash = 0;
                 }
             } else {
-                // Game over - reset to level 1
-                GameState.maxHealth = 3; // Reset to starting hearts
-                GameState.health = GameState.maxHealth;
-                GameState.lives = 2;
-                GameState.score = 0;
-                GameState.inventory = [];
-                GameState.drops = [];
-                GameState.projectiles = [];
-                GameState.killedEnemies = { real: {}, dream: {} };
-                GameState.dreamEssence = 0;
-                GameState.realEnergy = 0;
-                GameState.usableItems = [];
-                GameState.powerBoostTimer = 0;
-                GameState.shieldTimer = 0;
-                GameState.boss = null;
-                GameState.bossDefeated = {};
-                GameState.bossUnlocked = false;
-                Levels.loadLevel(1);
-                spawnEnemies();
-                this.init();
-                GameState.cameraX = 0;
+                // Game over - trigger game over screen
+                GameState.gameOver = true;
+                GameState.gameOverTimer = 0;
             }
         }
         updateUI();
@@ -3324,6 +3309,12 @@ function draw() {
         return;
     }
 
+    // Game over overlay (WASTED style)
+    if (GameState.gameOver) {
+        drawGameOver();
+        return;
+    }
+
     // Victory screen overlay
     if (GameState.gameComplete) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
@@ -3547,6 +3538,79 @@ function drawTitleScreen() {
     ctx.textAlign = 'left';
 }
 
+function drawGameOver() {
+    const t = GameState.gameOverTimer;
+
+    // Desaturation effect - darken with reddish tint
+    const fadeIn = Math.min(1, t / 30); // Fade in over 0.5 seconds
+    ctx.fillStyle = `rgba(20, 0, 0, ${0.7 * fadeIn})`;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Scanline effect
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * fadeIn})`;
+    for (let y = 0; y < GAME_HEIGHT; y += 4) {
+        ctx.fillRect(0, y, GAME_WIDTH, 2);
+    }
+
+    // Only show text after initial fade
+    if (t > 20) {
+        const textFade = Math.min(1, (t - 20) / 20);
+
+        // Glitch offset
+        const glitchX = t < 60 ? (Math.random() - 0.5) * 10 : 0;
+        const glitchY = t < 60 ? (Math.random() - 0.5) * 5 : 0;
+
+        // Big blocky "GAME OVER" text
+        ctx.save();
+        ctx.translate(GAME_WIDTH / 2 + glitchX, GAME_HEIGHT / 2 - 30 + glitchY);
+
+        // Red glow/shadow
+        ctx.fillStyle = `rgba(255, 0, 0, ${0.5 * textFade})`;
+        ctx.font = 'bold 64px Courier New';
+        ctx.textAlign = 'center';
+        for (let i = 0; i < 3; i++) {
+            ctx.fillText('GAME OVER', 2 + i, 2 + i);
+        }
+
+        // Main text - white with red tint
+        ctx.fillStyle = `rgba(255, 50, 50, ${textFade})`;
+        ctx.fillText('GAME OVER', 0, 0);
+
+        // Pixel block effect on letters
+        if (t < 80) {
+            ctx.fillStyle = `rgba(255, 0, 0, ${0.8 * textFade})`;
+            for (let i = 0; i < 10; i++) {
+                const bx = (Math.random() - 0.5) * 300;
+                const by = (Math.random() - 0.5) * 60;
+                const bs = 4 + Math.random() * 8;
+                ctx.fillRect(bx, by - 20, bs, bs);
+            }
+        }
+
+        ctx.restore();
+
+        // Subtitle
+        if (t > 60) {
+            const subFade = Math.min(1, (t - 60) / 30);
+            ctx.fillStyle = `rgba(200, 200, 200, ${subFade})`;
+            ctx.font = '18px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText('Returning to title...', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40);
+            ctx.textAlign = 'left';
+        }
+    }
+
+    // VHS-style color separation at edges
+    if (t > 10 && t < 100) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(255, 0, 0, 0.1)`;
+        ctx.fillRect(0, 0, 3, GAME_HEIGHT);
+        ctx.fillStyle = `rgba(0, 255, 255, 0.1)`;
+        ctx.fillRect(GAME_WIDTH - 3, 0, 3, GAME_HEIGHT);
+        ctx.globalCompositeOperation = 'source-over';
+    }
+}
+
 function drawPauseMenu() {
     // Darken game
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -3594,11 +3658,51 @@ function drawPauseMenu() {
 GameState.pauseSelection = 0;
 
 function gameLoop() {
-    if (GameState.screenState === 'playing') {
+    if (GameState.screenState === 'playing' && !GameState.gameOver) {
         update();
     }
+
+    // Handle game over animation
+    if (GameState.gameOver) {
+        GameState.gameOverTimer++;
+
+        // After 180 frames (3 seconds), reset to title
+        if (GameState.gameOverTimer > 180) {
+            resetToTitle();
+        }
+    }
+
     draw();
     requestAnimationFrame(gameLoop);
+}
+
+function resetToTitle() {
+    // Full reset
+    GameState.gameOver = false;
+    GameState.gameOverTimer = 0;
+    GameState.maxHealth = 3;
+    GameState.health = GameState.maxHealth;
+    GameState.lives = 2;
+    GameState.score = 0;
+    GameState.inventory = [];
+    GameState.drops = [];
+    GameState.projectiles = [];
+    GameState.killedEnemies = { real: {}, dream: {} };
+    GameState.dreamEssence = 0;
+    GameState.realEnergy = 0;
+    GameState.usableItems = [];
+    GameState.powerBoostTimer = 0;
+    GameState.shieldTimer = 0;
+    GameState.boss = null;
+    GameState.bossDefeated = {};
+    GameState.bossUnlocked = false;
+    GameState.currentWorld = 'real';
+    GameState.cameraX = 0;
+    GameState.screenState = 'title';
+    Levels.loadLevel(1);
+    Player.init();
+    spawnEnemies();
+    updateUI();
 }
 
 // ============================================

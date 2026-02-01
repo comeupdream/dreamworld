@@ -1892,13 +1892,13 @@ const BossTemplates = {
     3: { // Level 3 boss
         name: 'Nightmare Kuriboh',
         hp: 20,
-        width: 64,
-        height: 64,
-        world: 'dream', // Boss appears in dream world
+        width: 44,  // About 2x ghost size (ghost is 22px)
+        height: 44,
+        world: 'real', // Boss appears in real world - more room to fight!
         speed: 1.5,
         patterns: ['bounce', 'charge', 'spawn'],
-        spawnX: 200,
-        spawnY: 5
+        spawnX: 10, // Center of real world grid
+        spawnY: 10
     }
 };
 
@@ -1915,15 +1915,15 @@ function spawnBoss(level) {
         name: template.name,
         hp: template.hp,
         maxHp: template.hp,
-        x: template.spawnX * TILE_SIZE / 28, // Adjust for tile size
+        x: template.spawnX * TILE_SIZE,
         y: template.spawnY * TILE_SIZE,
         width: template.width,
         height: template.height,
         world: template.world,
         speed: template.speed,
         vx: template.speed,
-        vy: 0,
-        pattern: 'bounce',
+        vy: template.speed,
+        pattern: 'roam', // Top-down roaming pattern for real world
         patternTimer: 0,
         hitFlash: 0,
         meleeHit: false,
@@ -1985,32 +1985,33 @@ function updateBoss() {
 
     boss.patternTimer++;
 
-    // Movement patterns
-    if (boss.pattern === 'bounce') {
-        // Bounce around the arena
+    // Real world boundaries (inside the walls)
+    const minX = TILE_SIZE;
+    const maxX = (REAL_WORLD_TILES - 1) * TILE_SIZE - boss.width;
+    const minY = TILE_SIZE;
+    const maxY = (REAL_WORLD_TILES - 1) * TILE_SIZE - boss.height;
+
+    // Movement patterns for top-down real world
+    if (boss.pattern === 'roam') {
+        // Roam around the arena, bouncing off walls
         boss.x += boss.vx;
         boss.y += boss.vy;
 
-        // Gravity in dream world
-        boss.vy += 0.15;
-
         // Bounce off walls
-        if (boss.x < 0) { boss.x = 0; boss.vx = Math.abs(boss.vx); }
-        if (boss.x + boss.width > GAME_WIDTH * 2) {
-            boss.x = GAME_WIDTH * 2 - boss.width;
-            boss.vx = -Math.abs(boss.vx);
+        if (boss.x <= minX) { boss.x = minX; boss.vx = Math.abs(boss.vx); }
+        if (boss.x >= maxX) { boss.x = maxX; boss.vx = -Math.abs(boss.vx); }
+        if (boss.y <= minY) { boss.y = minY; boss.vy = Math.abs(boss.vy); }
+        if (boss.y >= maxY) { boss.y = maxY; boss.vy = -Math.abs(boss.vy); }
+
+        // Randomly change direction sometimes
+        if (Math.random() < 0.01) {
+            boss.vx = (Math.random() - 0.5) * boss.speed * 2;
+            boss.vy = (Math.random() - 0.5) * boss.speed * 2;
         }
 
-        // Bounce off floor/ceiling
-        const floorY = (12 - 3) * TILE_SIZE - boss.height;
-        if (boss.y > floorY) {
-            boss.y = floorY;
-            boss.vy = -8 - boss.phase * 2; // Higher bounces in later phases
-        }
-        if (boss.y < 0) { boss.y = 0; boss.vy = Math.abs(boss.vy); }
-
-        // Occasionally switch to charge pattern
-        if (boss.patternTimer > 180 && boss.phase >= 2) {
+        // Occasionally switch to charge pattern (more often in later phases)
+        const chargeChance = boss.phase >= 3 ? 120 : boss.phase >= 2 ? 180 : 300;
+        if (boss.patternTimer > chargeChance) {
             boss.pattern = 'charge';
             boss.patternTimer = 0;
             boss.chargeTarget = { x: Player.x, y: Player.y };
@@ -2022,14 +2023,23 @@ function updateBoss() {
         const dist = Math.sqrt(dx*dx + dy*dy);
 
         if (dist > 5) {
-            boss.x += (dx / dist) * boss.speed * 3;
-            boss.y += (dy / dist) * boss.speed * 3;
+            const chargeSpeed = boss.speed * (2 + boss.phase);
+            boss.x += (dx / dist) * chargeSpeed;
+            boss.y += (dy / dist) * chargeSpeed;
         }
 
-        if (boss.patternTimer > 60) {
-            boss.pattern = 'bounce';
+        // Clamp to boundaries
+        boss.x = Math.max(minX, Math.min(maxX, boss.x));
+        boss.y = Math.max(minY, Math.min(maxY, boss.y));
+
+        // Return to roam after charge duration
+        const chargeDuration = boss.phase >= 3 ? 45 : 60;
+        if (boss.patternTimer > chargeDuration) {
+            boss.pattern = 'roam';
             boss.patternTimer = 0;
-            boss.vy = -5;
+            // Random direction after charge
+            boss.vx = (Math.random() - 0.5) * boss.speed * 2;
+            boss.vy = (Math.random() - 0.5) * boss.speed * 2;
         }
     }
 
@@ -2062,17 +2072,20 @@ function drawBoss() {
     const centerY = drawY + boss.height / 2;
     const time = Date.now() / 1000;
 
+    // Scale factor based on boss size (44px = ~2x ghost, visuals scale accordingly)
+    const scale = boss.width / 44;
+
     // Kuriboh-style boss: fuzzy ball with big eyes, small limbs
-    // Inspired by Kirby enemies, Metroid metroids, Mario goombas
+    // Scaled down to fit 4-5x ghost size
 
     // Body pulsing
-    const pulse = Math.sin(time * 4) * 2;
-    const bodyRadius = 28 + pulse;
+    const pulse = Math.sin(time * 4) * (1.5 * scale);
+    const bodyRadius = (18 * scale) + pulse;
 
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(centerX, drawY + boss.height - 5, bodyRadius * 0.8, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, drawY + boss.height - (3 * scale), bodyRadius * 0.8, 5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Hit flash or normal coloring
@@ -2080,7 +2093,7 @@ function drawBoss() {
         ctx.fillStyle = '#fff';
     } else {
         // Furry brown body with gradient
-        const gradient = ctx.createRadialGradient(centerX - 5, centerY - 5, 5, centerX, centerY, bodyRadius);
+        const gradient = ctx.createRadialGradient(centerX - 3*scale, centerY - 3*scale, 3*scale, centerX, centerY, bodyRadius);
         gradient.addColorStop(0, '#8B4513');
         gradient.addColorStop(0.5, '#5D3A1A');
         gradient.addColorStop(1, '#3D2510');
@@ -2095,12 +2108,12 @@ function drawBoss() {
     // Fur texture - small bumps around edge
     if (boss.hitFlash <= 0) {
         ctx.fillStyle = '#4D2A10';
-        for (let i = 0; i < 16; i++) {
-            const angle = (i / 16) * Math.PI * 2 + time * 0.5;
-            const bumpX = centerX + Math.cos(angle) * (bodyRadius - 3);
-            const bumpY = centerY + Math.sin(angle) * (bodyRadius - 3);
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 + time * 0.5;
+            const bumpX = centerX + Math.cos(angle) * (bodyRadius - 2*scale);
+            const bumpY = centerY + Math.sin(angle) * (bodyRadius - 2*scale);
             ctx.beginPath();
-            ctx.arc(bumpX, bumpY, 5 + Math.sin(time * 3 + i) * 2, 0, Math.PI * 2);
+            ctx.arc(bumpX, bumpY, (3 + Math.sin(time * 3 + i)) * scale, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -2110,19 +2123,19 @@ function drawBoss() {
         ctx.fillStyle = '#FFD93D';
         // Left foot
         ctx.beginPath();
-        ctx.ellipse(centerX - 15, drawY + boss.height - 8, 10, 6, -0.2, 0, Math.PI * 2);
+        ctx.ellipse(centerX - 10*scale, drawY + boss.height - 5*scale, 6*scale, 4*scale, -0.2, 0, Math.PI * 2);
         ctx.fill();
         // Right foot
         ctx.beginPath();
-        ctx.ellipse(centerX + 15, drawY + boss.height - 8, 10, 6, 0.2, 0, Math.PI * 2);
+        ctx.ellipse(centerX + 10*scale, drawY + boss.height - 5*scale, 6*scale, 4*scale, 0.2, 0, Math.PI * 2);
         ctx.fill();
     }
 
     // Big expressive eyes (Kuriboh style)
-    const eyeOffsetX = 12;
-    const eyeY = centerY - 5;
-    const eyeWidth = 14;
-    const eyeHeight = 16;
+    const eyeOffsetX = 8 * scale;
+    const eyeY = centerY - 3*scale;
+    const eyeWidth = 9 * scale;
+    const eyeHeight = 10 * scale;
 
     // White of eyes
     ctx.fillStyle = '#fff';
@@ -2133,7 +2146,7 @@ function drawBoss() {
 
     // Eye outline
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5 * scale;
     ctx.beginPath();
     ctx.ellipse(centerX - eyeOffsetX, eyeY, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -2145,65 +2158,65 @@ function drawBoss() {
     const toPlayerX = Player.x - boss.x;
     const toPlayerY = Player.y - boss.y;
     const dist = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY) || 1;
-    const lookX = (toPlayerX / dist) * 3;
-    const lookY = (toPlayerY / dist) * 2;
+    const lookX = (toPlayerX / dist) * 2 * scale;
+    const lookY = (toPlayerY / dist) * 1.5 * scale;
 
     // Pupil color changes with phase
     const pupilColor = boss.phase >= 3 ? '#ff0000' : boss.phase >= 2 ? '#ff4400' : '#000';
     ctx.fillStyle = pupilColor;
     ctx.beginPath();
-    ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, 4, 0, Math.PI * 2);
-    ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, 4, 0, Math.PI * 2);
+    ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, 2.5*scale, 0, Math.PI * 2);
+    ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, 2.5*scale, 0, Math.PI * 2);
     ctx.fill();
 
     // Eye shine
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.arc(centerX - eyeOffsetX - 2, eyeY - 3, 2, 0, Math.PI * 2);
-    ctx.arc(centerX + eyeOffsetX - 2, eyeY - 3, 2, 0, Math.PI * 2);
+    ctx.arc(centerX - eyeOffsetX - 1.5*scale, eyeY - 2*scale, 1.2*scale, 0, Math.PI * 2);
+    ctx.arc(centerX + eyeOffsetX - 1.5*scale, eyeY - 2*scale, 1.2*scale, 0, Math.PI * 2);
     ctx.fill();
 
     // Angry eyebrows in later phases
     if (boss.phase >= 2) {
         ctx.strokeStyle = '#3D2510';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 2.5 * scale;
         ctx.beginPath();
-        ctx.moveTo(centerX - eyeOffsetX - 8, eyeY - 12);
-        ctx.lineTo(centerX - eyeOffsetX + 5, eyeY - 8);
+        ctx.moveTo(centerX - eyeOffsetX - 5*scale, eyeY - 7*scale);
+        ctx.lineTo(centerX - eyeOffsetX + 3*scale, eyeY - 5*scale);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(centerX + eyeOffsetX + 8, eyeY - 12);
-        ctx.lineTo(centerX + eyeOffsetX - 5, eyeY - 8);
+        ctx.moveTo(centerX + eyeOffsetX + 5*scale, eyeY - 7*scale);
+        ctx.lineTo(centerX + eyeOffsetX - 3*scale, eyeY - 5*scale);
         ctx.stroke();
     }
 
     // Small clawed hands (like Metroid enemies)
     if (boss.hitFlash <= 0) {
-        const handWave = Math.sin(time * 5) * 10;
+        const handWave = Math.sin(time * 5) * 6 * scale;
         ctx.fillStyle = '#FFD93D';
 
         // Left hand
         ctx.beginPath();
-        ctx.ellipse(centerX - bodyRadius - 5, centerY + handWave, 8, 6, -0.5, 0, Math.PI * 2);
+        ctx.ellipse(centerX - bodyRadius - 3*scale, centerY + handWave, 5*scale, 4*scale, -0.5, 0, Math.PI * 2);
         ctx.fill();
         // Claws
         ctx.fillStyle = '#333';
         for (let c = 0; c < 3; c++) {
             ctx.beginPath();
-            ctx.ellipse(centerX - bodyRadius - 10 + c * 4, centerY + handWave + 5, 2, 4, 0.3, 0, Math.PI * 2);
+            ctx.ellipse(centerX - bodyRadius - 6*scale + c * 2.5*scale, centerY + handWave + 3*scale, 1.2*scale, 2.5*scale, 0.3, 0, Math.PI * 2);
             ctx.fill();
         }
 
         // Right hand
         ctx.fillStyle = '#FFD93D';
         ctx.beginPath();
-        ctx.ellipse(centerX + bodyRadius + 5, centerY - handWave, 8, 6, 0.5, 0, Math.PI * 2);
+        ctx.ellipse(centerX + bodyRadius + 3*scale, centerY - handWave, 5*scale, 4*scale, 0.5, 0, Math.PI * 2);
         ctx.fill();
         // Claws
         ctx.fillStyle = '#333';
         for (let c = 0; c < 3; c++) {
             ctx.beginPath();
-            ctx.ellipse(centerX + bodyRadius + 10 - c * 4, centerY - handWave + 5, 2, 4, -0.3, 0, Math.PI * 2);
+            ctx.ellipse(centerX + bodyRadius + 6*scale - c * 2.5*scale, centerY - handWave + 3*scale, 1.2*scale, 2.5*scale, -0.3, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -2211,11 +2224,11 @@ function drawBoss() {
     // Phase 3: Aura effect
     if (boss.phase >= 3 && boss.hitFlash <= 0) {
         ctx.strokeStyle = 'rgba(255,0,0,0.5)';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2 * scale;
         ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 10 * scale;
         ctx.beginPath();
-        ctx.arc(centerX, centerY, bodyRadius + 8 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, bodyRadius + 5*scale + Math.sin(time * 8) * 3*scale, 0, Math.PI * 2);
         ctx.stroke();
         ctx.shadowBlur = 0;
     }
@@ -2232,7 +2245,9 @@ function drawBossHealthBar() {
     const barWidth = 200;
     const barHeight = 16;
     const barX = (GAME_WIDTH - barWidth) / 2;
-    const barY = DREAM_WORLD_Y_OFFSET + 15;
+    // Position health bar at top of current world
+    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+    const barY = yOffset + 30;
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -2899,9 +2914,9 @@ function switchWorld() {
         Player.facing = 1;
         GameState.cameraX = 0;
 
-        // Check if this level has a boss and spawn it
-        if (LevelTemplates.bossLevels.includes(Levels.current)) {
-            spawnBoss(Levels.current);
+        // Despawn boss when leaving real world (unless defeated)
+        if (GameState.boss && !GameState.bossDefeated[Levels.current]) {
+            GameState.boss = null;
         }
     } else {
         GameState.currentWorld = 'real';
@@ -2912,9 +2927,9 @@ function switchWorld() {
         Player.isMoving = false;
         Player.moveProgress = 0;
 
-        // Despawn boss when leaving dream world (unless defeated)
-        if (GameState.boss && !GameState.bossDefeated[Levels.current]) {
-            GameState.boss = null;
+        // Check if this level has a boss and spawn it in real world
+        if (LevelTemplates.bossLevels.includes(Levels.current)) {
+            spawnBoss(Levels.current);
         }
     }
     spawnEnemies(); // Will now respect killed enemies tracker
@@ -2932,6 +2947,7 @@ function reachGoal() {
 function completeLevel() {
     GameState.projectiles = [];
     GameState.drops = [];
+    GameState.boss = null; // Clear any existing boss
 
     if (Levels.nextLevel()) {
         // Progress to next level - reset killed enemies for new level
@@ -2941,6 +2957,10 @@ function completeLevel() {
         // Keep score, essence, energy, and usable items!
         Player.init();
         spawnEnemies();
+        // Spawn boss if this is a boss level
+        if (LevelTemplates.bossLevels.includes(Levels.current)) {
+            spawnBoss(Levels.current);
+        }
         updateUI();
     } else {
         // Game complete - show victory and restart
@@ -2960,6 +2980,8 @@ function completeLevel() {
             GameState.usableItems = [];
             GameState.powerBoostTimer = 0;
             GameState.shieldTimer = 0;
+            GameState.boss = null;
+            GameState.bossDefeated = {};
             Player.init();
             spawnEnemies();
             updateUI();

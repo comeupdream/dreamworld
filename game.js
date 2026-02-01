@@ -25,6 +25,9 @@ canvas.height = GAME_HEIGHT;
 
 const DREAM_WORLD_Y_OFFSET = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT;
 
+// Game speed multiplier (0.9 = 10% slower)
+const GAME_SPEED = 0.9;
+
 // ============================================
 // 8-BIT AUDIO SYSTEM
 // ============================================
@@ -1671,7 +1674,7 @@ const Player = {
     updateTopDown() {
         if (this.isMoving) {
             // Power boost increases speed by 50%!
-            const speed = GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed;
+            const speed = (GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed) * GAME_SPEED;
             this.moveProgress += speed;
             if (this.moveProgress >= 1) {
                 this.finishMove();
@@ -1711,7 +1714,7 @@ const Player = {
 
         // Jumping
         if (this.isJumping) {
-            this.jumpPhase += 0.025;
+            this.jumpPhase += 0.025 * GAME_SPEED;
 
             // Horizontal movement during jump
             this.handleAirMovement(tiles);
@@ -1734,8 +1737,8 @@ const Player = {
 
         // Falling
         if (this.isFalling) {
-            this.fallSpeed += 0.008;
-            this.y += this.fallSpeed * TILE_SIZE;
+            this.fallSpeed += 0.008 * GAME_SPEED;
+            this.y += this.fallSpeed * TILE_SIZE * GAME_SPEED;
 
             this.handleAirMovement(tiles);
 
@@ -1757,7 +1760,7 @@ const Player = {
         // Ground movement
         if (this.isMoving) {
             // Power boost increases speed by 50%!
-            const speed = GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed;
+            const speed = (GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed) * GAME_SPEED;
             this.moveProgress += speed;
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
@@ -1812,7 +1815,7 @@ const Player = {
 
         if (this.isMoving) {
             // Power boost increases speed by 50%!
-            const speed = GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed;
+            const speed = (GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed) * GAME_SPEED;
             this.moveProgress += speed;
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
@@ -2295,19 +2298,19 @@ function updateEnemies() {
                 // Move on one axis at a time - pick the one with greater distance
                 // Alternate axis when blocked to prevent getting stuck
                 if (enemy.chaseAxis === 'x' && absDx > 5) {
-                    nextX = enemy.x + Math.sign(dx) * enemy.speed;
+                    nextX = enemy.x + Math.sign(dx) * enemy.speed * GAME_SPEED;
                 } else if (absDy > 5) {
-                    nextY = enemy.y + Math.sign(dy) * enemy.speed;
+                    nextY = enemy.y + Math.sign(dy) * enemy.speed * GAME_SPEED;
                     enemy.chaseAxis = 'y';
                 } else if (absDx > 5) {
-                    nextX = enemy.x + Math.sign(dx) * enemy.speed;
+                    nextX = enemy.x + Math.sign(dx) * enemy.speed * GAME_SPEED;
                     enemy.chaseAxis = 'x';
                 }
             }
         } else if (enemy.patrol === 'horizontal') {
-            nextX = enemy.x + enemy.speed * enemy.direction;
+            nextX = enemy.x + enemy.speed * enemy.direction * GAME_SPEED;
         } else if (enemy.patrol === 'vertical') {
-            nextY = enemy.y + enemy.speed * enemy.direction;
+            nextY = enemy.y + enemy.speed * enemy.direction * GAME_SPEED;
         }
 
         // Check wall collision at next position
@@ -3014,7 +3017,7 @@ function updateBoss() {
 
     // UDLR movement - one direction at a time (like chase enemies)
     const directions = ['up', 'down', 'left', 'right'];
-    const speed = boss.speed * (1 + (boss.phase - 1) * 0.3);
+    const speed = boss.speed * (1 + (boss.phase - 1) * 0.3) * GAME_SPEED;
 
     if (boss.pattern === 'roam') {
         // Move in current direction
@@ -3594,8 +3597,8 @@ function updateProjectiles() {
     const tiles = GameState.currentWorld === 'real' ? Levels.getReal() : Levels.getDream();
 
     GameState.projectiles = GameState.projectiles.filter(p => {
-        p.x += p.vx;
-        p.y += p.vy;
+        p.x += p.vx * GAME_SPEED;
+        p.y += p.vy * GAME_SPEED;
         p.life--;
 
         // Check wall collision

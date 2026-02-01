@@ -811,7 +811,7 @@ document.addEventListener('keydown', (e) => {
 
     // Handle pause menu input
     if (GameState.screenState === 'paused') {
-        if (e.code === 'Escape') {
+        if (e.code === 'Escape' || e.code === 'KeyP') {
             GameState.screenState = 'playing';
         } else if (e.code === 'ArrowUp') {
             GameState.pauseSelection = (GameState.pauseSelection - 1 + 3) % 3;
@@ -826,8 +826,8 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // Toggle pause during gameplay
-    if (e.code === 'Escape' && GameState.screenState === 'playing') {
+    // Toggle pause during gameplay (ESC or P)
+    if ((e.code === 'Escape' || e.code === 'KeyP') && GameState.screenState === 'playing') {
         GameState.screenState = 'paused';
         GameState.pauseSelection = 0;
         e.preventDefault();
@@ -842,7 +842,7 @@ document.addEventListener('keydown', (e) => {
         KeyState.continuousMove[e.code] = false;
     }
     GameState.keysPressed[e.code] = true;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'KeyC', 'Digit1', 'Digit2', 'Digit3', 'KeyZ', 'Escape'].includes(e.code)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'KeyC', 'Digit1', 'Digit2', 'Digit3', 'KeyZ', 'KeyP', 'Escape'].includes(e.code)) {
         e.preventDefault();
     }
 });
@@ -1982,10 +1982,10 @@ function spawnBoss(level) {
         height: template.height,
         world: template.world,
         speed: template.speed,
-        vx: template.speed,
-        vy: template.speed,
+        moveDir: 'right', // UDLR movement direction
         pattern: 'roam', // Top-down roaming pattern for real world
         patternTimer: 0,
+        dirChangeTimer: 0, // Timer for changing direction
         hitFlash: 0,
         meleeHit: false,
         animFrame: 0,
@@ -2039,6 +2039,7 @@ function updateBoss() {
     if (GameState.currentWorld !== GameState.boss.world) return;
 
     const boss = GameState.boss;
+    const tiles = Levels.getReal();
     boss.meleeHit = false; // Reset melee hit flag each frame
     boss.animTimer++;
     if (boss.animTimer > 8) {
@@ -2047,62 +2048,105 @@ function updateBoss() {
     }
 
     boss.patternTimer++;
+    boss.dirChangeTimer++;
 
-    // Real world boundaries (inside the walls)
-    const minX = TILE_SIZE;
-    const maxX = (REAL_WORLD_TILES - 1) * TILE_SIZE - boss.width;
-    const minY = TILE_SIZE;
-    const maxY = (REAL_WORLD_TILES - 1) * TILE_SIZE - boss.height;
+    // Helper to check if boss can move to position (wall collision)
+    const canMoveTo = (x, y) => {
+        const corners = [
+            { x: x, y: y },
+            { x: x + boss.width - 1, y: y },
+            { x: x, y: y + boss.height - 1 },
+            { x: x + boss.width - 1, y: y + boss.height - 1 }
+        ];
+        for (const corner of corners) {
+            const tileX = Math.floor(corner.x / TILE_SIZE);
+            const tileY = Math.floor(corner.y / TILE_SIZE);
+            if (tileY >= 0 && tileY < tiles.length && tileX >= 0 && tileX < tiles[0].length) {
+                if (tiles[tileY][tileX] === 1) return false;
+            }
+        }
+        return true;
+    };
 
-    // Movement patterns for top-down real world
+    // UDLR movement - one direction at a time (like chase enemies)
+    const directions = ['up', 'down', 'left', 'right'];
+    const speed = boss.speed * (1 + (boss.phase - 1) * 0.3);
+
     if (boss.pattern === 'roam') {
-        // Roam around the arena, bouncing off walls
-        boss.x += boss.vx;
-        boss.y += boss.vy;
+        // Move in current direction
+        let nextX = boss.x;
+        let nextY = boss.y;
 
-        // Bounce off walls
-        if (boss.x <= minX) { boss.x = minX; boss.vx = Math.abs(boss.vx); }
-        if (boss.x >= maxX) { boss.x = maxX; boss.vx = -Math.abs(boss.vx); }
-        if (boss.y <= minY) { boss.y = minY; boss.vy = Math.abs(boss.vy); }
-        if (boss.y >= maxY) { boss.y = maxY; boss.vy = -Math.abs(boss.vy); }
-
-        // Randomly change direction sometimes
-        if (Math.random() < 0.01) {
-            boss.vx = (Math.random() - 0.5) * boss.speed * 2;
-            boss.vy = (Math.random() - 0.5) * boss.speed * 2;
+        switch (boss.moveDir) {
+            case 'up': nextY -= speed; break;
+            case 'down': nextY += speed; break;
+            case 'left': nextX -= speed; break;
+            case 'right': nextX += speed; break;
         }
 
-        // Occasionally switch to charge pattern (nerfed: less frequent)
+        // Check wall collision
+        if (canMoveTo(nextX, nextY)) {
+            boss.x = nextX;
+            boss.y = nextY;
+        } else {
+            // Hit wall - pick new random direction
+            boss.moveDir = directions[Math.floor(Math.random() * 4)];
+            boss.dirChangeTimer = 0;
+        }
+
+        // Randomly change direction occasionally
+        if (boss.dirChangeTimer > 60 && Math.random() < 0.02) {
+            boss.moveDir = directions[Math.floor(Math.random() * 4)];
+            boss.dirChangeTimer = 0;
+        }
+
+        // Occasionally switch to charge pattern
         const chargeChance = boss.phase >= 3 ? 240 : boss.phase >= 2 ? 360 : 480;
         if (boss.patternTimer > chargeChance) {
             boss.pattern = 'charge';
             boss.patternTimer = 0;
-            boss.chargeTarget = { x: Player.x, y: Player.y };
+            // Set charge direction - pick axis with larger difference to player
+            const dx = Player.x - boss.x;
+            const dy = Player.y - boss.y;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                boss.moveDir = dx > 0 ? 'right' : 'left';
+            } else {
+                boss.moveDir = dy > 0 ? 'down' : 'up';
+            }
         }
     } else if (boss.pattern === 'charge') {
-        // Charge toward player's position (nerfed: slower charge)
-        const dx = boss.chargeTarget.x - boss.x;
-        const dy = boss.chargeTarget.y - boss.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        // Charge in UDLR direction toward player
+        const chargeSpeed = speed * (1.5 + boss.phase * 0.3);
+        let nextX = boss.x;
+        let nextY = boss.y;
 
-        if (dist > 5) {
-            const chargeSpeed = boss.speed * (1.5 + boss.phase * 0.5); // Nerfed from (2 + boss.phase)
-            boss.x += (dx / dist) * chargeSpeed;
-            boss.y += (dy / dist) * chargeSpeed;
+        switch (boss.moveDir) {
+            case 'up': nextY -= chargeSpeed; break;
+            case 'down': nextY += chargeSpeed; break;
+            case 'left': nextX -= chargeSpeed; break;
+            case 'right': nextX += chargeSpeed; break;
         }
 
-        // Clamp to boundaries
-        boss.x = Math.max(minX, Math.min(maxX, boss.x));
-        boss.y = Math.max(minY, Math.min(maxY, boss.y));
+        // Check wall collision
+        if (canMoveTo(nextX, nextY)) {
+            boss.x = nextX;
+            boss.y = nextY;
+        } else {
+            // Hit wall during charge - return to roam
+            boss.pattern = 'roam';
+            boss.patternTimer = 0;
+            boss.moveDir = directions[Math.floor(Math.random() * 4)];
+        }
 
-        // Return to roam after charge duration (shorter charge time)
+        // Return to roam after charge duration
         const chargeDuration = boss.phase >= 3 ? 30 : 40;
         if (boss.patternTimer > chargeDuration) {
             boss.pattern = 'roam';
             boss.patternTimer = 0;
-            // Random direction after charge
-            boss.vx = (Math.random() - 0.5) * boss.speed * 2;
-            boss.vy = (Math.random() - 0.5) * boss.speed * 2;
+            // Continue in same direction or pick new one
+            if (Math.random() < 0.5) {
+                boss.moveDir = directions[Math.floor(Math.random() * 4)];
+            }
         }
     }
 
@@ -3214,6 +3258,30 @@ function drawMessage() {
     ctx.textAlign = 'left';
 }
 
+function drawPauseButton() {
+    // Draw pause button in top right corner
+    const btnX = GAME_WIDTH - 55;
+    const btnY = 5;
+    const btnW = 50;
+    const btnH = 20;
+
+    // Button background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(btnX, btnY, btnW, btnH);
+
+    // Button border
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+    // Button text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('[P]ause', btnX + btnW / 2, btnY + 14);
+    ctx.textAlign = 'left';
+}
+
 // ============================================
 // GAME LOOP
 // ============================================
@@ -3248,6 +3316,7 @@ function draw() {
     Player.draw();
     drawPowerUpStatus();
     drawMessage();
+    drawPauseButton();
 
     // Pause overlay
     if (GameState.screenState === 'paused') {

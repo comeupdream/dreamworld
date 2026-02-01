@@ -274,6 +274,62 @@ const Audio8Bit = {
         this.chargeGain = null;
     },
 
+    // Jetpack jump sound (dream world)
+    playJetpackJump() {
+        if (!this.ctx) return;
+        this.resume();
+
+        // Burst of air/thrust
+        const bufferSize = this.ctx.sampleRate * 0.25;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            // Noise that fades out
+            const env = Math.pow(1 - i / bufferSize, 0.5);
+            data[i] = (Math.random() * 2 - 1) * env;
+        }
+        const noise = this.ctx.createBufferSource();
+        const noiseGain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        noise.buffer = buffer;
+        filter.type = 'bandpass';
+        filter.frequency.value = 800;
+        filter.Q.value = 1;
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.sfxGain);
+        noiseGain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        noise.start(this.ctx.currentTime);
+
+        // Rising tone (thrust)
+        const osc1 = this.ctx.createOscillator();
+        const gain1 = this.ctx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.connect(gain1);
+        gain1.connect(this.sfxGain);
+        osc1.frequency.setValueAtTime(100, this.ctx.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.1);
+        osc1.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.2);
+        gain1.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc1.start(this.ctx.currentTime);
+        osc1.stop(this.ctx.currentTime + 0.2);
+
+        // High whistle (steam/air)
+        const osc2 = this.ctx.createOscillator();
+        const gain2 = this.ctx.createGain();
+        osc2.type = 'sine';
+        osc2.connect(gain2);
+        gain2.connect(this.sfxGain);
+        osc2.frequency.setValueAtTime(1200, this.ctx.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+        gain2.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc2.start(this.ctx.currentTime);
+        osc2.stop(this.ctx.currentTime + 0.15);
+    },
+
     // Portal/teleport sound
     playPortal() {
         if (!this.ctx) return;
@@ -1488,6 +1544,7 @@ const Player = {
             this.jumpPhase = 0;
             this.startY = this.y;
             this.targetGridY = targetY;
+            Audio8Bit.playJetpackJump();
         }
     },
 

@@ -1,6 +1,6 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.0 - Combat Update
+// v1.1 - Enemy AI & Levels Update
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
@@ -37,6 +37,30 @@ const LevelTemplates = {
             [1,0,0,0,0,0,1,0,3,1],
             [1,0,0,0,0,0,0,0,0,1],
             [1,1,1,1,1,1,1,1,1,1],
+        ],
+        2: [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,1,0,0,0,4,1],
+            [1,0,0,0,1,0,0,0,0,1],
+            [1,0,0,0,0,0,0,1,0,1],
+            [1,1,0,0,0,0,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,0,0,1,2,0,1],
+            [1,0,1,0,0,0,1,0,3,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1],
+        ],
+        3: [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,1,0,0,4,0,1],
+            [1,0,1,0,1,0,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,0,0,1],
+            [1,0,0,0,0,0,0,0,1,1],
+            [1,1,0,1,0,0,0,2,0,1],
+            [1,0,0,1,0,1,0,0,3,1],
+            [1,0,0,0,0,1,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1],
         ]
     },
     dreamWorld: {
@@ -47,20 +71,59 @@ const LevelTemplates = {
             [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,1,1,6],
             [0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,3,6],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+        ],
+        2: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,1,6],
+            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,4,1,1,6],
+            [0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,0,3,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+        ],
+        3: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,1,6],
+            [0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,0,0,4,1,1,6],
+            [0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,3,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ]
     },
     // Enemy spawn positions per level
+    // Types: 'patrol' (back and forth), 'chase' (follows player slowly)
     enemies: {
         real: {
             1: [
-                { x: 3, y: 3, patrol: 'horizontal', range: 2 },
-                { x: 5, y: 7, patrol: 'vertical', range: 2 }
+                { x: 3, y: 3, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.0 },
+                { x: 5, y: 7, type: 'patrol', patrol: 'vertical', range: 2, speed: 1.0 }
+            ],
+            2: [
+                { x: 4, y: 4, type: 'chase', speed: 0.5 },
+                { x: 7, y: 2, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.2 },
+                { x: 2, y: 6, type: 'patrol', patrol: 'vertical', range: 2, speed: 1.2 }
+            ],
+            3: [
+                { x: 4, y: 4, type: 'chase', speed: 0.6 },
+                { x: 6, y: 6, type: 'chase', speed: 0.5 },
+                { x: 2, y: 2, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 },
+                { x: 7, y: 7, type: 'patrol', patrol: 'vertical', range: 2, speed: 1.5 }
             ]
         },
         dream: {
             1: [
-                { x: 10, y: 4, patrol: 'horizontal', range: 3 },
-                { x: 20, y: 4, patrol: 'horizontal', range: 2 }
+                { x: 10, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 },
+                { x: 20, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.5 }
+            ],
+            2: [
+                { x: 8, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.8 },
+                { x: 15, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 },
+                { x: 22, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 2.0 }
+            ],
+            3: [
+                { x: 6, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 2.0 },
+                { x: 12, y: 2, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.8 },
+                { x: 18, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 2.2 },
+                { x: 24, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 2.0 }
             ]
         }
     }
@@ -72,6 +135,7 @@ const LevelTemplates = {
 
 const Levels = {
     current: 1,
+    maxLevel: 3,
     realWorld: null,
     dreamWorld: null,
 
@@ -83,6 +147,14 @@ const Levels = {
 
     getReal() { return this.realWorld; },
     getDream() { return this.dreamWorld; },
+
+    nextLevel() {
+        if (this.current < this.maxLevel) {
+            this.loadLevel(this.current + 1);
+            return true;
+        }
+        return false; // No more levels - game complete
+    },
 
     reset() { this.loadLevel(1); }
 };
@@ -102,7 +174,8 @@ const GameState = {
     maxHealth: 3,
     invincible: 0, // Invincibility frames after hit
     projectiles: [],
-    enemies: []
+    enemies: [],
+    gameComplete: false
 };
 
 // ============================================
@@ -577,9 +650,10 @@ function spawnEnemies() {
                 startY: e.y * TILE_SIZE + 4,
                 width: 42,
                 height: 42,
-                patrol: e.patrol,
-                range: e.range * TILE_SIZE,
-                speed: 1.5,
+                type: e.type || 'patrol',
+                patrol: e.patrol || 'horizontal',
+                range: (e.range || 2) * TILE_SIZE,
+                speed: e.speed || 1.0,
                 direction: 1,
                 world: world
             });
@@ -588,19 +662,86 @@ function spawnEnemies() {
 }
 
 function updateEnemies() {
+    const tiles = GameState.currentWorld === 'real' ? Levels.getReal() : Levels.getDream();
+
     GameState.enemies.forEach(enemy => {
         if (enemy.world !== GameState.currentWorld) return;
 
-        // Patrol movement
-        if (enemy.patrol === 'horizontal') {
-            enemy.x += enemy.speed * enemy.direction;
-            if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) {
-                enemy.direction *= -1;
+        // Calculate next position based on enemy type
+        let nextX = enemy.x;
+        let nextY = enemy.y;
+
+        if (enemy.type === 'chase') {
+            // Chase enemy - moves toward player slowly
+            const dx = Player.x - enemy.x;
+            const dy = Player.y - enemy.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 10) { // Only move if not already on player
+                nextX = enemy.x + (dx / dist) * enemy.speed;
+                nextY = enemy.y + (dy / dist) * enemy.speed;
             }
+        } else if (enemy.patrol === 'horizontal') {
+            nextX = enemy.x + enemy.speed * enemy.direction;
         } else if (enemy.patrol === 'vertical') {
-            enemy.y += enemy.speed * enemy.direction;
-            if (enemy.y > enemy.startY + enemy.range || enemy.y < enemy.startY - enemy.range) {
+            nextY = enemy.y + enemy.speed * enemy.direction;
+        }
+
+        // Check wall collision at next position
+        const leftTile = Math.floor(nextX / TILE_SIZE);
+        const rightTile = Math.floor((nextX + enemy.width) / TILE_SIZE);
+        const topTile = Math.floor(nextY / TILE_SIZE);
+        const bottomTile = Math.floor((nextY + enemy.height) / TILE_SIZE);
+
+        let blockedX = false;
+        let blockedY = false;
+
+        // Check X movement
+        for (let ty = Math.floor(enemy.y / TILE_SIZE); ty <= Math.floor((enemy.y + enemy.height) / TILE_SIZE) && !blockedX; ty++) {
+            for (let tx = leftTile; tx <= rightTile && !blockedX; tx++) {
+                if (ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length) {
+                    const tile = tiles[ty][tx];
+                    if (tile === 1 || tile === 3 || tile === 6) blockedX = true;
+                } else {
+                    blockedX = true;
+                }
+            }
+        }
+
+        // Check Y movement
+        for (let ty = topTile; ty <= bottomTile && !blockedY; ty++) {
+            for (let tx = Math.floor(enemy.x / TILE_SIZE); tx <= Math.floor((enemy.x + enemy.width) / TILE_SIZE) && !blockedY; tx++) {
+                if (ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length) {
+                    const tile = tiles[ty][tx];
+                    if (tile === 1 || tile === 3 || tile === 6) blockedY = true;
+                } else {
+                    blockedY = true;
+                }
+            }
+        }
+
+        if (enemy.type === 'chase') {
+            // Chase enemies try to move in both axes independently
+            if (!blockedX) enemy.x = nextX;
+            if (!blockedY) enemy.y = nextY;
+        } else {
+            // Patrol enemies reverse direction on collision
+            const blocked = (enemy.patrol === 'horizontal') ? blockedX : blockedY;
+            if (blocked) {
                 enemy.direction *= -1;
+            } else {
+                if (enemy.patrol === 'horizontal') {
+                    if (nextX > enemy.startX + enemy.range || nextX < enemy.startX - enemy.range) {
+                        enemy.direction *= -1;
+                    } else {
+                        enemy.x = nextX;
+                    }
+                } else if (enemy.patrol === 'vertical') {
+                    if (nextY > enemy.startY + enemy.range || nextY < enemy.startY - enemy.range) {
+                        enemy.direction *= -1;
+                    } else {
+                        enemy.y = nextY;
+                    }
+                }
             }
         }
 
@@ -625,33 +766,64 @@ function drawEnemies() {
 
         if (drawX < -enemy.width || drawX > GAME_WIDTH) return;
 
-        // Draw enemy (ghost/slime shape - scaled)
+        // Pac-Man style ghost - symmetrical dome with wavy bottom
         const isReal = GameState.currentWorld === 'real';
-        ctx.fillStyle = isReal ? '#aa3333' : '#9933cc';
+        const ghostColor = isReal ? '#ff4444' : '#cc44ff';
+        const centerX = drawX + enemy.width / 2;
+        const centerY = drawY + enemy.height / 2;
+        const radius = 18;
+        const waveTime = Date.now() * 0.01; // Animate wavy bottom
 
-        // Body
+        // Ghost body - dome top
+        ctx.fillStyle = ghostColor;
         ctx.beginPath();
-        ctx.arc(drawX + enemy.width/2, drawY + enemy.height/2 - 6, 17, Math.PI, 0);
-        ctx.lineTo(drawX + enemy.width/2 + 17, drawY + enemy.height - 6);
-        // Wavy bottom
-        for (let i = 0; i < 4; i++) {
-            const wx = drawX + enemy.width/2 + 17 - i * 8.5;
-            const wy = drawY + enemy.height - 6 + (i % 2 === 0 ? 6 : 0);
+        ctx.arc(centerX, centerY - 4, radius, Math.PI, 0);
+        ctx.lineTo(centerX + radius, centerY + 12);
+
+        // Wavy bottom - 4 symmetric waves
+        const waveCount = 4;
+        const waveWidth = (radius * 2) / waveCount;
+        for (let i = 0; i < waveCount; i++) {
+            const wx = centerX + radius - (i + 0.5) * waveWidth;
+            const waveOffset = Math.sin(waveTime + i) * 2;
+            const wy = centerY + 12 + (i % 2 === 0 ? 6 + waveOffset : waveOffset);
             ctx.lineTo(wx, wy);
         }
+        ctx.lineTo(centerX - radius, centerY + 12);
         ctx.closePath();
         ctx.fill();
 
-        // Eyes
+        // Lighter inner highlight
+        ctx.fillStyle = isReal ? '#ff7777' : '#dd77ff';
+        ctx.beginPath();
+        ctx.arc(centerX - 5, centerY - 8, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyes - symmetrical, centered, looking at player
+        const eyeOffsetX = 7;
+        const eyeY = centerY - 4;
+        const eyeRadius = 6;
+        const pupilRadius = 3;
+
+        // Look toward player
+        const toPlayerX = Player.x - enemy.x;
+        const toPlayerY = Player.y - enemy.y;
+        const dist = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY) || 1;
+        const lookX = (toPlayerX / dist) * 2;
+        const lookY = (toPlayerY / dist) * 2;
+
+        // White part of eyes
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(drawX + enemy.width/2 - 6, drawY + enemy.height/2 - 8, 5, 0, Math.PI * 2);
-        ctx.arc(drawX + enemy.width/2 + 6, drawY + enemy.height/2 - 8, 5, 0, Math.PI * 2);
+        ctx.arc(centerX - eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
+        ctx.arc(centerX + eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#000';
+
+        // Pupils - look at player
+        ctx.fillStyle = '#2233aa';
         ctx.beginPath();
-        ctx.arc(drawX + enemy.width/2 - 4, drawY + enemy.height/2 - 8, 2.5, 0, Math.PI * 2);
-        ctx.arc(drawX + enemy.width/2 + 8, drawY + enemy.height/2 - 8, 2.5, 0, Math.PI * 2);
+        ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
+        ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
         ctx.fill();
     });
 }
@@ -1011,19 +1183,39 @@ function switchWorld() {
 }
 
 function enterDoor() {
-    alert('Level Complete!');
-    Levels.reset();
-    GameState.currentWorld = 'real';
-    GameState.inventory = [];
-    GameState.cameraX = 0;
-    GameState.health = GameState.maxHealth;
-    Player.init();
-    spawnEnemies();
-    updateUI();
+    completeLevel();
 }
 
 function reachGoal() {
-    enterDoor();
+    completeLevel();
+}
+
+function completeLevel() {
+    GameState.projectiles = [];
+
+    if (Levels.nextLevel()) {
+        // Progress to next level
+        GameState.currentWorld = 'real';
+        GameState.inventory = [];
+        GameState.cameraX = 0;
+        Player.init();
+        spawnEnemies();
+        updateUI();
+    } else {
+        // Game complete - show victory and restart
+        GameState.gameComplete = true;
+        setTimeout(() => {
+            GameState.gameComplete = false;
+            Levels.reset();
+            GameState.currentWorld = 'real';
+            GameState.inventory = [];
+            GameState.cameraX = 0;
+            GameState.health = GameState.maxHealth;
+            Player.init();
+            spawnEnemies();
+            updateUI();
+        }, 3000);
+    }
 }
 
 function updateUI() {
@@ -1032,11 +1224,11 @@ function updateUI() {
     const hintsEl = document.getElementById('controls-hint');
 
     if (GameState.currentWorld === 'real') {
-        indicator.textContent = `REAL WORLD`;
+        indicator.textContent = `REAL WORLD - Level ${Levels.current}`;
         indicator.className = 'real-world';
         hintsEl.textContent = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
     } else {
-        indicator.textContent = `DREAM WORLD`;
+        indicator.textContent = `DREAM WORLD - Level ${Levels.current}`;
         indicator.className = 'dream-world';
         hintsEl.textContent = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
     }
@@ -1083,6 +1275,21 @@ function draw() {
     drawEnemies();
     drawProjectiles();
     Player.draw();
+
+    // Victory screen overlay
+    if (GameState.gameComplete) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 36px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText('YOU WIN!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
+        ctx.fillStyle = '#fff';
+        ctx.font = '18px Courier New';
+        ctx.fillText('All levels complete!', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
+        ctx.fillText('Restarting...', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 50);
+        ctx.textAlign = 'left';
+    }
 }
 
 function gameLoop() {
@@ -1101,4 +1308,4 @@ spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v1.0 - Combat Update! Arrows to move, X to shoot/fireball');
+console.log('Dreamworld v1.1 - Enemy AI & Levels! Arrows to move, X to shoot/fireball');

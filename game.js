@@ -1,11 +1,11 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.5 - Combat & UI Update
-// - Melee attack (C key) with swing animation
-// - Charged shots (hold X to charge)
-// - Tap-to-move single tile, hold for continuous
-// - Title screen with Tetris block logo
-// - Pause menu (ESC key)
+// v1.6 - Boss & Enemy Update
+// - Boss system: Nightmare Kuriboh at level 3
+// - Boss has 20 HP, health bar, 3 phases
+// - Shadow ghosts (2 HP, dark with red glow)
+// - Charged shots deal 3x damage
+// - Enemy HP system with hit flash
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
@@ -686,12 +686,12 @@ const LevelTemplates = {
             2: [
                 { x: 10, y: 10, type: 'chase', speed: 0.4 },
                 { x: 14, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.0 },
-                { x: 4, y: 12, type: 'patrol', patrol: 'vertical', range: 3, speed: 1.0 }
+                { x: 4, y: 12, type: 'patrol', patrol: 'vertical', range: 3, speed: 1.0, variant: 'shadow' }
             ],
             3: [
-                { x: 10, y: 8, type: 'chase', speed: 0.5 },
+                { x: 10, y: 8, type: 'chase', speed: 0.5, variant: 'shadow' },
                 { x: 12, y: 12, type: 'chase', speed: 0.4 },
-                { x: 4, y: 4, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 4, y: 4, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2, variant: 'shadow' },
                 { x: 14, y: 14, type: 'patrol', patrol: 'vertical', range: 4, speed: 1.2 }
             ]
         },
@@ -702,17 +702,18 @@ const LevelTemplates = {
             ],
             2: [
                 { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.4 },
-                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2, variant: 'shadow' },
                 { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 }
             ],
             3: [
-                { x: 12, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 },
-                { x: 28, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4 },
-                { x: 45, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.8 },
-                { x: 62, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.6 }
+                // Level 3 dream world is the BOSS ARENA - fewer regular enemies
+                { x: 12, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6, variant: 'shadow' },
+                { x: 28, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4, variant: 'shadow' }
             ]
         }
-    }
+    },
+    // Boss levels - which levels have a boss
+    bossLevels: [3] // Level 3 has a boss
 };
 
 // ============================================
@@ -771,7 +772,10 @@ const GameState = {
     realEnergy: 0,   // Collected from Real World, powers Dream World abilities
     usableItems: [], // Consumable items: health potions, power boosts, etc.
     powerBoostTimer: 0, // Active power boost countdown
-    shieldTimer: 0      // Active shield countdown
+    shieldTimer: 0,     // Active shield countdown
+    // Boss system
+    boss: null,         // Current boss object
+    bossDefeated: {}    // Track defeated bosses by level
 };
 
 // ============================================
@@ -869,6 +873,8 @@ function restartGame() {
     GameState.gameComplete = false;
     GameState.powerBoostTimer = 0;
     GameState.shieldTimer = 0;
+    GameState.boss = null;
+    GameState.bossDefeated = {};
     spawnEnemies();
     updateUI();
 }
@@ -1092,8 +1098,8 @@ const Player = {
 
     checkMeleeHits() {
         const meleeRect = this.getMeleeRect();
-        const worldKey = GameState.currentWorld === 'real' ? 'real' : 'dream';
 
+        // Check regular enemies
         for (let i = GameState.enemies.length - 1; i >= 0; i--) {
             const enemy = GameState.enemies[i];
             if (enemy.world !== GameState.currentWorld) continue;
@@ -1105,24 +1111,24 @@ const Player = {
                 // Mark as hit so we don't hit again this swing
                 enemy.meleeHit = true;
 
-                // Track kill
-                if (!GameState.killedEnemies[worldKey][Levels.current]) {
-                    GameState.killedEnemies[worldKey][Levels.current] = [];
+                // Melee does 1 damage + melee bonus points
+                if (damageEnemy(enemy, 1, i)) {
+                    // Enemy died - add melee bonus
+                    GameState.score += 50;
+                    updateUI();
                 }
-                if (!GameState.killedEnemies[worldKey][Levels.current].includes(enemy.templateIndex)) {
-                    GameState.killedEnemies[worldKey][Levels.current].push(enemy.templateIndex);
+            }
+        }
+
+        // Check boss
+        if (GameState.boss && GameState.boss.active && GameState.currentWorld === GameState.boss.world) {
+            const boss = GameState.boss;
+            if (!boss.meleeHit) {
+                const bossRect = { x: boss.x, y: boss.y, width: boss.width, height: boss.height };
+                if (rectsOverlap(meleeRect, bossRect)) {
+                    boss.meleeHit = true;
+                    damageBoss(1);
                 }
-
-                // Award points (melee bonus!)
-                const points = (enemy.type === 'chase' ? 150 : 100) + 50;
-                GameState.score += points;
-
-                // Spawn drop
-                spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
-
-                GameState.enemies.splice(i, 1);
-                Audio8Bit.playHit();
-                updateUI();
             }
         }
     },
@@ -1579,6 +1585,10 @@ function spawnEnemies() {
             // Skip if this enemy was already killed
             if (killedIndices.includes(index)) return;
 
+            // Determine HP based on enemy variant (shadow = 2 HP, normal = 1 HP)
+            const variant = e.variant || 'normal';
+            const hp = variant === 'shadow' ? 2 : 1;
+
             GameState.enemies.push({
                 x: e.x * TILE_SIZE + 2,
                 y: e.y * TILE_SIZE + 2,
@@ -1587,6 +1597,9 @@ function spawnEnemies() {
                 width: 22,
                 height: 22,
                 type: e.type || 'patrol',
+                variant: variant, // 'normal' or 'shadow'
+                hp: hp,
+                maxHp: hp,
                 patrol: e.patrol || 'horizontal',
                 range: (e.range || 2) * TILE_SIZE,
                 speed: e.speed || 1.0,
@@ -1596,6 +1609,39 @@ function spawnEnemies() {
                 templateIndex: index // Track which template enemy this is
             });
         });
+    }
+}
+
+// Damage an enemy and handle death
+function damageEnemy(enemy, damage, index) {
+    enemy.hp -= damage;
+    enemy.hitFlash = 10; // Flash white for 10 frames
+
+    if (enemy.hp <= 0) {
+        // Track kill
+        const worldKey = GameState.currentWorld === 'real' ? 'real' : 'dream';
+        if (!GameState.killedEnemies[worldKey][Levels.current]) {
+            GameState.killedEnemies[worldKey][Levels.current] = [];
+        }
+        if (!GameState.killedEnemies[worldKey][Levels.current].includes(enemy.templateIndex)) {
+            GameState.killedEnemies[worldKey][Levels.current].push(enemy.templateIndex);
+        }
+
+        // Award points based on enemy type and variant
+        let points = enemy.type === 'chase' ? 150 : 100;
+        if (enemy.variant === 'shadow') points += 100; // Bonus for shadow enemies
+        GameState.score += points;
+
+        // Spawn drop
+        spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
+
+        GameState.enemies.splice(index, 1);
+        Audio8Bit.playHit();
+        updateUI();
+        return true; // Enemy died
+    } else {
+        Audio8Bit.playHit();
+        return false; // Enemy still alive
     }
 }
 
@@ -1727,13 +1773,31 @@ function drawEnemies() {
 
         if (drawX < -enemy.width || drawX > GAME_WIDTH) return;
 
-        // Pac-Man style ghost - symmetrical dome with wavy bottom (scaled for 22px)
-        const isReal = GameState.currentWorld === 'real';
-        const ghostColor = isReal ? '#ff4444' : '#cc44ff';
+        // Decrement hit flash
+        if (enemy.hitFlash > 0) enemy.hitFlash--;
+
         const centerX = drawX + enemy.width / 2;
         const centerY = drawY + enemy.height / 2;
         const radius = 9;
         const waveTime = Date.now() * 0.01;
+        const isReal = GameState.currentWorld === 'real';
+        const isShadow = enemy.variant === 'shadow';
+
+        // Determine colors based on variant
+        let ghostColor, highlightColor, eyeColor, pupilColor;
+        if (enemy.hitFlash > 0) {
+            // Flash white when hit
+            ghostColor = '#fff';
+            highlightColor = '#fff';
+        } else if (isShadow) {
+            // Shadow ghost - dark and menacing
+            ghostColor = '#1a1a2e';
+            highlightColor = '#2d2d44';
+        } else {
+            // Normal ghost
+            ghostColor = isReal ? '#ff4444' : '#cc44ff';
+            highlightColor = isReal ? '#ff7777' : '#dd77ff';
+        }
 
         // Ghost body - dome top
         ctx.fillStyle = ghostColor;
@@ -1754,13 +1818,25 @@ function drawEnemies() {
         ctx.closePath();
         ctx.fill();
 
-        // Lighter inner highlight
-        ctx.fillStyle = isReal ? '#ff7777' : '#dd77ff';
-        ctx.beginPath();
-        ctx.arc(centerX - 2, centerY - 4, 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Shadow ghost dark aura effect
+        if (isShadow && enemy.hitFlash <= 0) {
+            ctx.strokeStyle = '#ff0044';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#ff0044';
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
 
-        // Eyes - symmetrical, centered, looking at player
+        // Lighter inner highlight (skip if flashing)
+        if (enemy.hitFlash <= 0) {
+            ctx.fillStyle = highlightColor;
+            ctx.beginPath();
+            ctx.arc(centerX - 2, centerY - 4, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Eyes
         const eyeOffsetX = 3;
         const eyeY = centerY - 2;
         const eyeRadius = 3;
@@ -1773,20 +1849,422 @@ function drawEnemies() {
         const lookX = (toPlayerX / dist) * 1;
         const lookY = (toPlayerY / dist) * 1;
 
-        // White part of eyes
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(centerX - eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
-        ctx.arc(centerX + eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
-        ctx.fill();
+        if (isShadow && enemy.hitFlash <= 0) {
+            // Shadow ghost - glowing red eyes
+            ctx.fillStyle = '#ff0044';
+            ctx.shadowColor = '#ff0044';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(centerX - eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
+            ctx.arc(centerX + eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
 
-        // Pupils - look at player
-        ctx.fillStyle = '#2233aa';
-        ctx.beginPath();
-        ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
-        ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
-        ctx.fill();
+            // Dark pupils
+            ctx.fillStyle = '#330011';
+            ctx.beginPath();
+            ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
+            ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Normal ghost eyes - white with blue pupils
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(centerX - eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
+            ctx.arc(centerX + eyeOffsetX, eyeY, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#2233aa';
+            ctx.beginPath();
+            ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
+            ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, pupilRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
+}
+
+// ============================================
+// BOSS SYSTEM
+// ============================================
+
+// Boss templates - can add more bosses for different levels
+const BossTemplates = {
+    3: { // Level 3 boss
+        name: 'Nightmare Kuriboh',
+        hp: 20,
+        width: 64,
+        height: 64,
+        world: 'dream', // Boss appears in dream world
+        speed: 1.5,
+        patterns: ['bounce', 'charge', 'spawn'],
+        spawnX: 200,
+        spawnY: 5
+    }
+};
+
+function spawnBoss(level) {
+    const template = BossTemplates[level];
+    if (!template) return false;
+
+    // Check if already defeated
+    if (GameState.bossDefeated[level]) return false;
+
+    GameState.boss = {
+        active: true,
+        level: level,
+        name: template.name,
+        hp: template.hp,
+        maxHp: template.hp,
+        x: template.spawnX * TILE_SIZE / 28, // Adjust for tile size
+        y: template.spawnY * TILE_SIZE,
+        width: template.width,
+        height: template.height,
+        world: template.world,
+        speed: template.speed,
+        vx: template.speed,
+        vy: 0,
+        pattern: 'bounce',
+        patternTimer: 0,
+        hitFlash: 0,
+        meleeHit: false,
+        animFrame: 0,
+        animTimer: 0,
+        attackCooldown: 0,
+        phase: 1 // Boss gets harder at lower HP
+    };
+
+    return true;
+}
+
+function damageBoss(damage) {
+    if (!GameState.boss || !GameState.boss.active) return;
+
+    const boss = GameState.boss;
+    boss.hp -= damage;
+    boss.hitFlash = 15;
+
+    // Phase transitions at HP thresholds
+    if (boss.hp <= boss.maxHp * 0.3 && boss.phase < 3) {
+        boss.phase = 3;
+        boss.speed = 3;
+    } else if (boss.hp <= boss.maxHp * 0.6 && boss.phase < 2) {
+        boss.phase = 2;
+        boss.speed = 2.2;
+    }
+
+    if (boss.hp <= 0) {
+        // Boss defeated!
+        GameState.bossDefeated[boss.level] = true;
+        GameState.score += 1000 * boss.level;
+        Audio8Bit.playPickup();
+
+        // Big reward drops
+        for (let i = 0; i < 5; i++) {
+            spawnDrop(boss.x + boss.width/2 + (Math.random()-0.5)*40,
+                      boss.y + boss.height/2 + (Math.random()-0.5)*40, 'boss');
+        }
+
+        GameState.boss = null;
+        updateUI();
+    } else {
+        Audio8Bit.playHit();
+    }
+}
+
+function updateBoss() {
+    if (!GameState.boss || !GameState.boss.active) return;
+    if (GameState.currentWorld !== GameState.boss.world) return;
+
+    const boss = GameState.boss;
+    boss.meleeHit = false; // Reset melee hit flag each frame
+    boss.animTimer++;
+    if (boss.animTimer > 8) {
+        boss.animTimer = 0;
+        boss.animFrame = (boss.animFrame + 1) % 4;
+    }
+
+    boss.patternTimer++;
+
+    // Movement patterns
+    if (boss.pattern === 'bounce') {
+        // Bounce around the arena
+        boss.x += boss.vx;
+        boss.y += boss.vy;
+
+        // Gravity in dream world
+        boss.vy += 0.15;
+
+        // Bounce off walls
+        if (boss.x < 0) { boss.x = 0; boss.vx = Math.abs(boss.vx); }
+        if (boss.x + boss.width > GAME_WIDTH * 2) {
+            boss.x = GAME_WIDTH * 2 - boss.width;
+            boss.vx = -Math.abs(boss.vx);
+        }
+
+        // Bounce off floor/ceiling
+        const floorY = (12 - 3) * TILE_SIZE - boss.height;
+        if (boss.y > floorY) {
+            boss.y = floorY;
+            boss.vy = -8 - boss.phase * 2; // Higher bounces in later phases
+        }
+        if (boss.y < 0) { boss.y = 0; boss.vy = Math.abs(boss.vy); }
+
+        // Occasionally switch to charge pattern
+        if (boss.patternTimer > 180 && boss.phase >= 2) {
+            boss.pattern = 'charge';
+            boss.patternTimer = 0;
+            boss.chargeTarget = { x: Player.x, y: Player.y };
+        }
+    } else if (boss.pattern === 'charge') {
+        // Charge toward player's position
+        const dx = boss.chargeTarget.x - boss.x;
+        const dy = boss.chargeTarget.y - boss.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist > 5) {
+            boss.x += (dx / dist) * boss.speed * 3;
+            boss.y += (dy / dist) * boss.speed * 3;
+        }
+
+        if (boss.patternTimer > 60) {
+            boss.pattern = 'bounce';
+            boss.patternTimer = 0;
+            boss.vy = -5;
+        }
+    }
+
+    // Collision with player
+    const playerRect = Player.getRect();
+    const bossRect = { x: boss.x, y: boss.y, width: boss.width, height: boss.height };
+    if (rectsOverlap(playerRect, bossRect)) {
+        Player.takeDamage();
+    }
+}
+
+function drawBoss() {
+    if (!GameState.boss || !GameState.boss.active) return;
+    if (GameState.currentWorld !== GameState.boss.world) return;
+
+    const boss = GameState.boss;
+    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+
+    const drawX = boss.x - cameraOffset;
+    const drawY = boss.y + yOffset;
+
+    // Skip if off screen
+    if (drawX < -boss.width || drawX > GAME_WIDTH + boss.width) return;
+
+    // Decrement hit flash
+    if (boss.hitFlash > 0) boss.hitFlash--;
+
+    const centerX = drawX + boss.width / 2;
+    const centerY = drawY + boss.height / 2;
+    const time = Date.now() / 1000;
+
+    // Kuriboh-style boss: fuzzy ball with big eyes, small limbs
+    // Inspired by Kirby enemies, Metroid metroids, Mario goombas
+
+    // Body pulsing
+    const pulse = Math.sin(time * 4) * 2;
+    const bodyRadius = 28 + pulse;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(centerX, drawY + boss.height - 5, bodyRadius * 0.8, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hit flash or normal coloring
+    if (boss.hitFlash > 0) {
+        ctx.fillStyle = '#fff';
+    } else {
+        // Furry brown body with gradient
+        const gradient = ctx.createRadialGradient(centerX - 5, centerY - 5, 5, centerX, centerY, bodyRadius);
+        gradient.addColorStop(0, '#8B4513');
+        gradient.addColorStop(0.5, '#5D3A1A');
+        gradient.addColorStop(1, '#3D2510');
+        ctx.fillStyle = gradient;
+    }
+
+    // Main fuzzy body
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, bodyRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fur texture - small bumps around edge
+    if (boss.hitFlash <= 0) {
+        ctx.fillStyle = '#4D2A10';
+        for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2 + time * 0.5;
+            const bumpX = centerX + Math.cos(angle) * (bodyRadius - 3);
+            const bumpY = centerY + Math.sin(angle) * (bodyRadius - 3);
+            ctx.beginPath();
+            ctx.arc(bumpX, bumpY, 5 + Math.sin(time * 3 + i) * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Small feet (like Kirby/Goomba)
+    if (boss.hitFlash <= 0) {
+        ctx.fillStyle = '#FFD93D';
+        // Left foot
+        ctx.beginPath();
+        ctx.ellipse(centerX - 15, drawY + boss.height - 8, 10, 6, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        // Right foot
+        ctx.beginPath();
+        ctx.ellipse(centerX + 15, drawY + boss.height - 8, 10, 6, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Big expressive eyes (Kuriboh style)
+    const eyeOffsetX = 12;
+    const eyeY = centerY - 5;
+    const eyeWidth = 14;
+    const eyeHeight = 16;
+
+    // White of eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(centerX - eyeOffsetX, eyeY, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX + eyeOffsetX, eyeY, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye outline
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(centerX - eyeOffsetX, eyeY, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(centerX + eyeOffsetX, eyeY, eyeWidth / 2, eyeHeight / 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Pupils - look at player, angry in later phases
+    const toPlayerX = Player.x - boss.x;
+    const toPlayerY = Player.y - boss.y;
+    const dist = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY) || 1;
+    const lookX = (toPlayerX / dist) * 3;
+    const lookY = (toPlayerY / dist) * 2;
+
+    // Pupil color changes with phase
+    const pupilColor = boss.phase >= 3 ? '#ff0000' : boss.phase >= 2 ? '#ff4400' : '#000';
+    ctx.fillStyle = pupilColor;
+    ctx.beginPath();
+    ctx.arc(centerX - eyeOffsetX + lookX, eyeY + lookY, 4, 0, Math.PI * 2);
+    ctx.arc(centerX + eyeOffsetX + lookX, eyeY + lookY, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(centerX - eyeOffsetX - 2, eyeY - 3, 2, 0, Math.PI * 2);
+    ctx.arc(centerX + eyeOffsetX - 2, eyeY - 3, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Angry eyebrows in later phases
+    if (boss.phase >= 2) {
+        ctx.strokeStyle = '#3D2510';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(centerX - eyeOffsetX - 8, eyeY - 12);
+        ctx.lineTo(centerX - eyeOffsetX + 5, eyeY - 8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(centerX + eyeOffsetX + 8, eyeY - 12);
+        ctx.lineTo(centerX + eyeOffsetX - 5, eyeY - 8);
+        ctx.stroke();
+    }
+
+    // Small clawed hands (like Metroid enemies)
+    if (boss.hitFlash <= 0) {
+        const handWave = Math.sin(time * 5) * 10;
+        ctx.fillStyle = '#FFD93D';
+
+        // Left hand
+        ctx.beginPath();
+        ctx.ellipse(centerX - bodyRadius - 5, centerY + handWave, 8, 6, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Claws
+        ctx.fillStyle = '#333';
+        for (let c = 0; c < 3; c++) {
+            ctx.beginPath();
+            ctx.ellipse(centerX - bodyRadius - 10 + c * 4, centerY + handWave + 5, 2, 4, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Right hand
+        ctx.fillStyle = '#FFD93D';
+        ctx.beginPath();
+        ctx.ellipse(centerX + bodyRadius + 5, centerY - handWave, 8, 6, 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Claws
+        ctx.fillStyle = '#333';
+        for (let c = 0; c < 3; c++) {
+            ctx.beginPath();
+            ctx.ellipse(centerX + bodyRadius + 10 - c * 4, centerY - handWave + 5, 2, 4, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Phase 3: Aura effect
+    if (boss.phase >= 3 && boss.hitFlash <= 0) {
+        ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, bodyRadius + 8 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    // Draw health bar
+    drawBossHealthBar();
+}
+
+function drawBossHealthBar() {
+    if (!GameState.boss || !GameState.boss.active) return;
+    if (GameState.currentWorld !== GameState.boss.world) return;
+
+    const boss = GameState.boss;
+    const barWidth = 200;
+    const barHeight = 16;
+    const barX = (GAME_WIDTH - barWidth) / 2;
+    const barY = DREAM_WORLD_Y_OFFSET + 15;
+
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 25);
+
+    // Boss name
+    ctx.fillStyle = '#ff6666';
+    ctx.font = 'bold 12px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(boss.name, GAME_WIDTH / 2, barY + 8);
+
+    // Health bar background
+    ctx.fillStyle = '#333';
+    ctx.fillRect(barX, barY + 12, barWidth, barHeight);
+
+    // Health bar fill
+    const hpPercent = boss.hp / boss.maxHp;
+    const hpColor = hpPercent > 0.6 ? '#44ff44' : hpPercent > 0.3 ? '#ffff44' : '#ff4444';
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(barX, barY + 12, barWidth * hpPercent, barHeight);
+
+    // Health bar border
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX, barY + 12, barWidth, barHeight);
+
+    // HP text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px Courier New';
+    ctx.fillText(`${boss.hp} / ${boss.maxHp}`, GAME_WIDTH / 2, barY + 23);
+
+    ctx.textAlign = 'left';
 }
 
 // ============================================
@@ -1816,25 +2294,20 @@ function updateProjectiles() {
             if (p.x > enemy.x && p.x < enemy.x + enemy.width &&
                 p.y > enemy.y && p.y < enemy.y + enemy.height) {
 
-                // Track this enemy as killed
-                const worldKey = GameState.currentWorld === 'real' ? 'real' : 'dream';
-                if (!GameState.killedEnemies[worldKey][Levels.current]) {
-                    GameState.killedEnemies[worldKey][Levels.current] = [];
-                }
-                if (!GameState.killedEnemies[worldKey][Levels.current].includes(enemy.templateIndex)) {
-                    GameState.killedEnemies[worldKey][Levels.current].push(enemy.templateIndex);
-                }
+                // Charged shots do 3x damage, normal shots do 1
+                const damage = p.charged ? 3 : 1;
+                damageEnemy(enemy, damage, i);
+                return false; // Projectile consumed
+            }
+        }
 
-                // Award points based on enemy type
-                const points = enemy.type === 'chase' ? 150 : 100;
-                GameState.score += points;
-
-                // Spawn item drop
-                spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
-
-                GameState.enemies.splice(i, 1);
-                Audio8Bit.playHit();
-                updateUI();
+        // Check boss collision
+        if (GameState.boss && GameState.boss.active && GameState.currentWorld === GameState.boss.world) {
+            const boss = GameState.boss;
+            if (p.x > boss.x && p.x < boss.x + boss.width &&
+                p.y > boss.y && p.y < boss.y + boss.height) {
+                const damage = p.charged ? 3 : 1;
+                damageBoss(damage);
                 return false;
             }
         }
@@ -2425,6 +2898,11 @@ function switchWorld() {
         Player.isFalling = false;
         Player.facing = 1;
         GameState.cameraX = 0;
+
+        // Check if this level has a boss and spawn it
+        if (LevelTemplates.bossLevels.includes(Levels.current)) {
+            spawnBoss(Levels.current);
+        }
     } else {
         GameState.currentWorld = 'real';
         Player.gridX = 12;
@@ -2433,6 +2911,11 @@ function switchWorld() {
         Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
         Player.moveProgress = 0;
+
+        // Despawn boss when leaving dream world (unless defeated)
+        if (GameState.boss && !GameState.bossDefeated[Levels.current]) {
+            GameState.boss = null;
+        }
     }
     spawnEnemies(); // Will now respect killed enemies tracker
     updateUI();
@@ -2597,6 +3080,7 @@ function drawPowerUpStatus() {
 function update() {
     Player.update();
     updateEnemies();
+    updateBoss();
     updateProjectiles();
     updateDrops();
     checkInteractions();
@@ -2617,6 +3101,7 @@ function draw() {
     DreamWorld.draw();
     drawActiveHighlight();
     drawEnemies();
+    drawBoss();
     drawDrops();
     drawProjectiles();
     Player.draw();
@@ -2915,4 +3400,4 @@ spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v1.5 - Combat & UI Update! Melee (C), charged shots (hold X), title screen, pause (ESC)');
+console.log('Dreamworld v1.6 - Boss & Enemy Update! Nightmare Kuriboh boss at level 3, shadow ghosts (2 HP), charged shots deal 3x damage');

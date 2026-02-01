@@ -2594,9 +2594,9 @@ const BossTemplates = {
         spawnY: 10,
         type: 'kuriboh'
     },
-    6: { // Level 6 final boss - Void Specter
+    6: { // Level 6 final boss - Void Specter (NERFED)
         name: 'Void Specter',
-        hp: 30,
+        hp: 20, // Reduced from 30
         width: 50,
         height: 50,
         world: 'dream', // Boss appears in dream world!
@@ -2605,8 +2605,8 @@ const BossTemplates = {
         spawnX: 75, // Near end of dream world level 6
         spawnY: 5,  // Mid-height
         type: 'specter',
-        teleportCooldown: 180, // 3 seconds between teleports
-        shootCooldown: 120    // 2 seconds between shots (slowed 50%)
+        teleportCooldown: 240, // 4 seconds between teleports (was 3)
+        shootCooldown: 180    // 3 seconds between shots (was 2)
     }
 };
 
@@ -2720,50 +2720,74 @@ function updateVoidSpecter(boss) {
         tentacle.length = 20 + Math.sin(tentacle.phase) * 10;
     }
 
-    // Phase-based timing adjustments
+    // Phase-based timing adjustments (nerfed - less aggressive scaling)
     let teleportMod = 1;
     let shootMod = 1;
     let projectileCount = 1;
 
     if (boss.phase >= 3) {
-        teleportMod = 0.5;  // Teleport 2x faster
-        shootMod = 0.5;     // Shoot 2x faster
-        projectileCount = 3; // Spread shot
+        teleportMod = 0.75;  // Teleport 1.33x faster (was 2x)
+        shootMod = 0.75;     // Shoot 1.33x faster (was 2x)
+        projectileCount = 2; // 2 shots (was 3)
     } else if (boss.phase >= 2) {
-        teleportMod = 0.67; // Teleport 1.5x faster
-        shootMod = 0.67;
+        teleportMod = 0.85; // Teleport 1.17x faster (was 1.5x)
+        shootMod = 0.85;
         projectileCount = 2;
     }
 
     // Teleport logic
     boss.teleportTimer--;
     if (boss.teleportTimer <= 0) {
-        // Find valid teleport position in dream world
+        // Find valid teleport position in dream world (must be in open air!)
         const dreamWidth = tiles[0].length * TILE_SIZE;
         const dreamHeight = tiles.length * TILE_SIZE;
 
-        // Teleport to random position (prefer near player but not too close)
+        // Helper to check if position is valid (not in solid tiles)
+        const isValidPosition = (x, y) => {
+            // Check all corners of boss hitbox
+            const corners = [
+                { x: x, y: y },
+                { x: x + boss.width, y: y },
+                { x: x, y: y + boss.height },
+                { x: x + boss.width, y: y + boss.height }
+            ];
+            for (const corner of corners) {
+                const tileX = Math.floor(corner.x / TILE_SIZE);
+                const tileY = Math.floor(corner.y / TILE_SIZE);
+                if (tileY >= 0 && tileY < tiles.length && tileX >= 0 && tileX < tiles[0].length) {
+                    if (tiles[tileY][tileX] === 1) return false; // Solid tile
+                }
+            }
+            return true;
+        };
+
+        // Try to find a valid teleport position
         let newX, newY;
         let attempts = 0;
+        let foundValid = false;
         do {
-            // Bias toward player's X position
-            const playerBias = 0.3;
-            newX = Player.x + (Math.random() - 0.5) * 400;
-            newY = 80 + Math.random() * (dreamHeight - 200); // Stay in playable area
+            // Teleport near player but not too close, prefer open areas above platforms
+            newX = Player.x + (Math.random() - 0.5) * 350;
+            newY = 40 + Math.random() * 120; // Stay in upper portion where it's usually open
 
             // Clamp to world bounds
             newX = Math.max(100, Math.min(dreamWidth - 150, newX));
-            newY = Math.max(60, Math.min(dreamHeight - 100, newY));
+            newY = Math.max(30, Math.min(200, newY));
 
+            // Check if position is valid and not too close to player
+            if (isValidPosition(newX, newY) && Math.abs(newX - Player.x) > 80) {
+                foundValid = true;
+            }
             attempts++;
-        } while (attempts < 10 && Math.abs(newX - Player.x) < 100);
+        } while (!foundValid && attempts < 20);
 
-        boss.x = newX;
-        boss.y = newY;
+        // Only teleport if we found a valid spot
+        if (foundValid) {
+            boss.x = newX;
+            boss.y = newY;
+            Audio8Bit.playPortal();
+        }
         boss.teleportTimer = boss.teleportCooldown * teleportMod;
-
-        // Visual/audio feedback for teleport
-        Audio8Bit.playPortal();
     }
 
     // Shooting logic

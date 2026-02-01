@@ -664,14 +664,14 @@ const LevelTemplates = {
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
             [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,3,6],
-            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,6],
+            [0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,6],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,3,6],
+            [0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,6],
+            [1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ]
     },
@@ -759,7 +759,7 @@ const GameState = {
     cameraX: 0,
     nearDoor: null,
     health: 3,
-    maxHealth: 3,
+    maxHealth: 5, // Can grow up to 5 hearts
     invincible: 0, // Invincibility frames after hit
     projectiles: [],
     enemies: [],
@@ -865,6 +865,7 @@ function restartGame() {
     Levels.loadLevel(1);
     Player.init();
     GameState.health = 3;
+    GameState.maxHealth = 3; // Reset to starting hearts
     GameState.lives = 2;
     GameState.score = 0;
     GameState.inventory = [];
@@ -1140,7 +1141,9 @@ const Player = {
 
     updateTopDown() {
         if (this.isMoving) {
-            this.moveProgress += this.moveSpeed;
+            // Power boost increases speed by 50%!
+            const speed = GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed;
+            this.moveProgress += speed;
             if (this.moveProgress >= 1) {
                 this.finishMove();
             } else {
@@ -1224,7 +1227,9 @@ const Player = {
 
         // Ground movement
         if (this.isMoving) {
-            this.moveProgress += this.moveSpeed;
+            // Power boost increases speed by 50%!
+            const speed = GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed;
+            this.moveProgress += speed;
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
                 this.x = this.gridX * TILE_SIZE + 2;
@@ -1277,7 +1282,9 @@ const Player = {
         }
 
         if (this.isMoving) {
-            this.moveProgress += this.moveSpeed;
+            // Power boost increases speed by 50%!
+            const speed = GameState.powerBoostTimer > 0 ? this.moveSpeed * 1.5 : this.moveSpeed;
+            this.moveProgress += speed;
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
                 this.x = this.gridX * TILE_SIZE + 2;
@@ -1437,6 +1444,7 @@ const Player = {
                 }
             } else {
                 // Game over - reset to level 1
+                GameState.maxHealth = 3; // Reset to starting hearts
                 GameState.health = GameState.maxHealth;
                 GameState.lives = 2;
                 GameState.score = 0;
@@ -1653,7 +1661,9 @@ function spawnEnemies() {
 
 // Damage an enemy and handle death
 function damageEnemy(enemy, damage, index) {
-    enemy.hp -= damage;
+    // Power boost doubles damage!
+    const actualDamage = GameState.powerBoostTimer > 0 ? damage * 2 : damage;
+    enemy.hp -= actualDamage;
     enemy.hitFlash = 10; // Flash white for 10 frames
 
     if (enemy.hp <= 0) {
@@ -1979,7 +1989,9 @@ function damageBoss(damage) {
     if (!GameState.boss || !GameState.boss.active) return;
 
     const boss = GameState.boss;
-    boss.hp -= damage;
+    // Power boost doubles damage!
+    const actualDamage = GameState.powerBoostTimer > 0 ? damage * 2 : damage;
+    boss.hp -= actualDamage;
     boss.hitFlash = 15;
 
     // Phase transitions at HP thresholds (nerfed speeds)
@@ -2426,8 +2438,12 @@ function collectDrop(drop) {
         case 'health':
             if (GameState.health < GameState.maxHealth) {
                 GameState.health++;
+            } else if (GameState.maxHealth < 5) {
+                // At full health - add a permanent heart!
+                GameState.maxHealth++;
+                GameState.health++;
             } else {
-                GameState.score += 25; // Bonus points if at full health
+                GameState.score += 50; // Bonus points if at max hearts
             }
             break;
         case 'dream_essence':
@@ -2568,14 +2584,17 @@ function drawDrops() {
 // ============================================
 
 function useItem(slot) {
-    if (slot >= GameState.usableItems.length) return;
+    // Slot 0 (key 1) = power_boost, Slot 1 (key 2) = shield
+    const itemType = slot === 0 ? 'power_boost' : 'shield';
+    const itemIndex = GameState.usableItems.indexOf(itemType);
 
-    const item = GameState.usableItems[slot];
-    GameState.usableItems.splice(slot, 1);
+    if (itemIndex === -1) return; // Don't have this item
 
-    switch (item) {
+    GameState.usableItems.splice(itemIndex, 1);
+
+    switch (itemType) {
         case 'power_boost':
-            GameState.powerBoostTimer = 900; // 15 seconds
+            GameState.powerBoostTimer = 900; // 15 seconds - 2x DMG, 1.5x SPD
             break;
         case 'shield':
             GameState.shieldTimer = 1200; // 20 seconds
@@ -3024,6 +3043,7 @@ function completeLevel() {
             GameState.currentWorld = 'real';
             GameState.inventory = [];
             GameState.cameraX = 0;
+            GameState.maxHealth = 3; // Reset to starting hearts
             GameState.health = GameState.maxHealth;
             GameState.lives = 2;
             // Reset all progress on game restart
@@ -3075,13 +3095,14 @@ function updateUI() {
         invText = GameState.inventory.join(', ');
     }
 
-    // Usable items with keybinds
+    // Usable items with keybinds - show stacked counts
     if (GameState.usableItems.length > 0) {
-        const itemNames = GameState.usableItems.map((item, i) => {
-            const name = item === 'power_boost' ? '⭐Power' : '🛡Shield';
-            return `[${i + 1}]${name}`;
-        });
-        invText += (invText ? ' | ' : '') + itemNames.join(' ');
+        const powerCount = GameState.usableItems.filter(i => i === 'power_boost').length;
+        const shieldCount = GameState.usableItems.filter(i => i === 'shield').length;
+        const itemDisplay = [];
+        if (powerCount > 0) itemDisplay.push(`[1]⭐Power×${powerCount}`);
+        if (shieldCount > 0) itemDisplay.push(`[2]🛡Shield×${shieldCount}`);
+        invText += (invText ? ' | ' : '') + itemDisplay.join(' ');
     }
 
     // World power hint
@@ -3116,13 +3137,13 @@ function drawActiveHighlight() {
 function drawPowerUpStatus() {
     const yBase = GameState.currentWorld === 'real' ? 30 : DREAM_WORLD_Y_OFFSET + 30;
 
-    // Power boost indicator
+    // Power boost indicator - shows 2x DMG + 1.5x SPD
     if (GameState.powerBoostTimer > 0) {
-        ctx.fillStyle = 'rgba(255, 136, 0, 0.8)';
-        ctx.fillRect(5, yBase, 80, 16);
+        ctx.fillStyle = 'rgba(255, 136, 0, 0.9)';
+        ctx.fillRect(5, yBase, 110, 16);
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 10px Courier New';
-        ctx.fillText(`POWER ${Math.ceil(GameState.powerBoostTimer / 60)}s`, 10, yBase + 12);
+        ctx.fillText(`⚡2xDMG 1.5xSPD ${Math.ceil(GameState.powerBoostTimer / 60)}s`, 8, yBase + 12);
     }
 
     // Shield indicator

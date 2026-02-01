@@ -2976,6 +2976,13 @@ function switchWorld() {
 }
 
 function enterDoor() {
+    // Check if this is a boss level - same logic as reachGoal
+    if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
+        // Unlock boss - player must return to real world to fight
+        GameState.bossUnlocked = true;
+        console.log('Boss unlocked! Return to the portal to face the Nightmare Kuriboh!');
+        return; // Don't complete level yet
+    }
     completeLevel();
 }
 

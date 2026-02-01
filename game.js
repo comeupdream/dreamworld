@@ -2616,19 +2616,21 @@ const BossTemplates = {
         spawnY: 10,
         type: 'kuriboh'
     },
-    6: { // Level 6 final boss - Void Specter (NERFED)
+    6: { // Level 6 final boss - Void Specter (PUMPED UP!)
         name: 'Void Specter',
-        hp: 20, // Reduced from 30
+        hp: 30, // Back to 30!
         width: 50,
         height: 50,
         world: 'dream', // Boss appears in dream world!
         speed: 0, // Doesn't move traditionally - teleports!
-        patterns: ['teleport', 'shoot'],
+        patterns: ['teleport', 'shoot', 'shield', 'burst'],
         spawnX: 75, // Near end of dream world level 6
         spawnY: 5,  // Mid-height
         type: 'specter',
-        teleportCooldown: 240, // 4 seconds between teleports (was 3)
-        shootCooldown: 180    // 3 seconds between shots (was 2)
+        teleportCooldown: 180, // 3 seconds between teleports
+        shootCooldown: 120,   // 2 seconds between shots
+        shieldCooldown: 480,  // 8 seconds between shield phases
+        burstCooldown: 300    // 5 seconds between electric bursts
     }
 };
 
@@ -2668,7 +2670,19 @@ function spawnBoss(level) {
         shootTimer: template.shootCooldown || 60,
         shootCooldown: template.shootCooldown || 60,
         tentacles: [], // Electric tentacle positions
-        plasmaPhase: 0 // For plasma animation
+        plasmaPhase: 0, // For plasma animation
+        // NEW: Shield phase properties
+        shieldTimer: template.shieldCooldown || 480,
+        shieldCooldown: template.shieldCooldown || 480,
+        isShielded: false,
+        shieldChargeTime: 0,
+        // NEW: Electric burst properties
+        burstTimer: template.burstCooldown || 300,
+        burstCooldown: template.burstCooldown || 300,
+        burstActive: 0, // Frames of active burst
+        // NEW: Damage tracking for revenge teleport
+        recentDamage: 0,
+        damageTimer: 0
     };
 
     // Initialize tentacles for Void Specter
@@ -2689,18 +2703,31 @@ function damageBoss(damage) {
     if (!GameState.boss || !GameState.boss.active) return;
 
     const boss = GameState.boss;
+
+    // Void Specter: Shield blocks all damage!
+    if (boss.type === 'specter' && boss.isShielded) {
+        Audio8Bit.playHit(); // Clang sound but no damage
+        return;
+    }
+
     // Power boost doubles damage!
     const actualDamage = GameState.powerBoostTimer > 0 ? damage * 2 : damage;
     boss.hp -= actualDamage;
     boss.hitFlash = 15;
 
-    // Phase transitions at HP thresholds (nerfed speeds)
+    // Void Specter: Track recent damage for revenge teleport
+    if (boss.type === 'specter') {
+        boss.recentDamage += actualDamage;
+        boss.damageTimer = 60; // 1 second window
+    }
+
+    // Phase transitions at HP thresholds
     if (boss.hp <= boss.maxHp * 0.3 && boss.phase < 3) {
         boss.phase = 3;
-        boss.speed = 1.4; // Nerfed from 3
+        boss.speed = 1.4;
     } else if (boss.hp <= boss.maxHp * 0.6 && boss.phase < 2) {
         boss.phase = 2;
-        boss.speed = 1.1; // Nerfed from 2.2
+        boss.speed = 1.1;
     }
 
     if (boss.hp <= 0) {
@@ -2755,6 +2782,90 @@ function updateVoidSpecter(boss) {
         teleportMod = 0.85; // Teleport 1.17x faster (was 1.5x)
         shootMod = 0.85;
         projectileCount = 2;
+    }
+
+    // === NEW: Damage tracking for revenge teleport ===
+    if (boss.damageTimer > 0) {
+        boss.damageTimer--;
+        if (boss.damageTimer <= 0) {
+            boss.recentDamage = 0; // Reset damage if window expired
+        }
+    }
+
+    // Revenge teleport: if took 5+ damage in 1 second, teleport immediately!
+    if (boss.recentDamage >= 5 && boss.damageTimer > 0) {
+        boss.recentDamage = 0;
+        boss.damageTimer = 0;
+        boss.teleportTimer = 0; // Force immediate teleport
+        Audio8Bit.playPortal();
+    }
+
+    // === NEW: Shield phase logic ===
+    if (!boss.isShielded) {
+        boss.shieldTimer--;
+        if (boss.shieldTimer <= 0) {
+            // Activate shield!
+            boss.isShielded = true;
+            boss.shieldChargeTime = 120; // 2 seconds of charging
+            Audio8Bit.playPickup(); // Shield activation sound
+        }
+    } else {
+        // Charging up big attack while shielded
+        boss.shieldChargeTime--;
+        if (boss.shieldChargeTime <= 0) {
+            // BURST! 5-projectile spread attack
+            const centerX = boss.x + boss.width / 2;
+            const centerY = boss.y + boss.height / 2;
+            const angleToPlayer = Math.atan2(
+                Player.y + Player.height/2 - centerY,
+                Player.x + Player.width/2 - centerX
+            );
+
+            for (let i = 0; i < 5; i++) {
+                const spreadAngle = angleToPlayer + ((i - 2) * 0.4); // Wide spread
+                const speed = 4 + boss.phase * 0.5; // Fast projectiles!
+
+                GameState.projectiles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(spreadAngle) * speed,
+                    vy: Math.sin(spreadAngle) * speed,
+                    isEnemyProjectile: true,
+                    isDarkOrb: true,
+                    isBurstShot: true, // Special visual marker
+                    life: 180
+                });
+            }
+
+            Audio8Bit.playLaser(true);
+            boss.isShielded = false;
+            boss.shieldTimer = boss.shieldCooldown; // Reset cooldown
+        }
+    }
+
+    // === NEW: Electric burst attack ===
+    boss.burstTimer--;
+    if (boss.burstTimer <= 0 && boss.burstActive <= 0) {
+        // Start electric burst!
+        boss.burstActive = 30; // Half second of active burst
+        Audio8Bit.playHit();
+    }
+
+    if (boss.burstActive > 0) {
+        boss.burstActive--;
+
+        // Check if player is in burst radius (100 pixels)
+        const dx = (Player.x + Player.width/2) - (boss.x + boss.width/2);
+        const dy = (Player.y + Player.height/2) - (boss.y + boss.height/2);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < 100) {
+            Player.takeDamage();
+        }
+
+        if (boss.burstActive <= 0) {
+            boss.burstTimer = boss.burstCooldown; // Reset cooldown
+        }
     }
 
     // Teleport logic
@@ -3136,6 +3247,101 @@ function drawVoidSpecter(boss) {
         ctx.arc(centerX, centerY, radius + 8 + Math.sin(time * 10) * 4, 0, Math.PI * 2);
         ctx.stroke();
         ctx.shadowBlur = 0;
+    }
+
+    // === SHIELD VISUAL ===
+    if (boss.isShielded) {
+        // Pulsing hexagonal shield barrier
+        const shieldRadius = radius + 20 + Math.sin(time * 8) * 5;
+        const chargeProgress = 1 - (boss.shieldChargeTime / 120); // 0 to 1
+
+        // Outer shield ring
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.5 + chargeProgress * 0.5})`;
+        ctx.lineWidth = 3 + chargeProgress * 3;
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        // Hexagon shape
+        for (let i = 0; i <= 6; i++) {
+            const angle = (i / 6) * Math.PI * 2 + time * 2;
+            const px = centerX + Math.cos(angle) * shieldRadius;
+            const py = centerY + Math.sin(angle) * shieldRadius;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Inner glow
+        const shieldGlow = ctx.createRadialGradient(centerX, centerY, radius, centerX, centerY, shieldRadius + 10);
+        shieldGlow.addColorStop(0, 'rgba(0, 255, 255, 0)');
+        shieldGlow.addColorStop(0.7, `rgba(0, 200, 255, ${0.2 + chargeProgress * 0.3})`);
+        shieldGlow.addColorStop(1, 'rgba(0, 255, 255, 0)');
+        ctx.fillStyle = shieldGlow;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, shieldRadius + 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // "CHARGING" text when shielded
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('CHARGING', centerX, centerY - radius - 30);
+
+        // Charge bar
+        ctx.fillStyle = '#003333';
+        ctx.fillRect(centerX - 25, centerY - radius - 25, 50, 6);
+        ctx.fillStyle = '#00ffff';
+        ctx.fillRect(centerX - 25, centerY - radius - 25, 50 * chargeProgress, 6);
+    }
+
+    // === ELECTRIC BURST VISUAL ===
+    if (boss.burstActive > 0) {
+        const burstProgress = boss.burstActive / 30; // 1 to 0
+        const burstRadius = 100;
+
+        // Electric field effect
+        ctx.strokeStyle = `rgba(255, 255, 0, ${burstProgress * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 20;
+
+        // Multiple electric rings
+        for (let ring = 0; ring < 3; ring++) {
+            const ringRadius = burstRadius * (0.4 + ring * 0.3) * (1 + Math.sin(time * 20 + ring) * 0.1);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Lightning bolts radiating outward
+        for (let bolt = 0; bolt < 8; bolt++) {
+            const boltAngle = (bolt / 8) * Math.PI * 2 + time * 5;
+            ctx.beginPath();
+            ctx.moveTo(centerX + Math.cos(boltAngle) * radius, centerY + Math.sin(boltAngle) * radius);
+
+            let bx = centerX + Math.cos(boltAngle) * radius;
+            let by = centerY + Math.sin(boltAngle) * radius;
+
+            for (let seg = 0; seg < 4; seg++) {
+                const jitter = (Math.random() - 0.5) * 20;
+                bx += Math.cos(boltAngle) * 20 + Math.cos(boltAngle + Math.PI/2) * jitter;
+                by += Math.sin(boltAngle) * 20 + Math.sin(boltAngle + Math.PI/2) * jitter;
+                ctx.lineTo(bx, by);
+            }
+            ctx.strokeStyle = `rgba(255, 255, 100, ${burstProgress})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        ctx.shadowBlur = 0;
+
+        // Warning text
+        ctx.fillStyle = `rgba(255, 255, 0, ${burstProgress})`;
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ BURST ⚡', centerX, centerY + radius + 40);
     }
 
     // Draw health bar

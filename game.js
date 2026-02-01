@@ -190,7 +190,7 @@ const Player = {
     // Movement state
     isMoving: false,
     moveProgress: 0,
-    moveSpeed: 0.12,
+    moveSpeed: 0.05, // Slow like Pokemon
     startX: 0,
     startY: 0,
     targetGridX: 0,
@@ -321,7 +321,7 @@ const Player = {
 
         // Handle falling (allows horizontal movement during fall)
         if (this.isFalling) {
-            this.fallSpeed += 0.008; // Gentle gravity
+            this.fallSpeed += 0.006; // Gentle gravity
             this.y += this.fallSpeed * TILE_SIZE;
 
             // Allow horizontal movement during fall
@@ -348,24 +348,23 @@ const Player = {
                 }
             }
 
-            // Check if we've reached next tile down
-            const currentTileY = Math.floor((this.y + this.height) / TILE_SIZE);
+            // Check landing - look at where player's feet are
+            const feetY = this.y + this.height;
+            const feetTileY = Math.floor(feetY / TILE_SIZE);
 
-            if (currentTileY > this.gridY) {
-                // Check if there's ground at this new position
-                if (currentTileY < tiles.length && this.hasGround(this.gridX, currentTileY, tiles)) {
-                    // Land on this tile
-                    this.gridY = currentTileY - 1;
-                    this.y = this.gridY * TILE_SIZE + 2;
-                    this.isFalling = false;
-                    this.fallSpeed = 0;
-                } else if (currentTileY >= maxY) {
-                    // Fell off bottom
-                    this.respawnInDreamWorld();
-                } else {
-                    // Keep falling
-                    this.gridY = currentTileY;
-                }
+            // Check if there's ground below us
+            if (feetTileY < tiles.length && this.hasGround(this.gridX, feetTileY, tiles)) {
+                // Land on top of this ground tile
+                this.gridY = feetTileY - 1;
+                this.y = this.gridY * TILE_SIZE + 2;
+                this.isFalling = false;
+                this.fallSpeed = 0;
+            } else if (feetTileY >= tiles.length) {
+                // Fell off bottom
+                this.respawnInDreamWorld();
+            } else {
+                // Update grid position while falling
+                this.gridY = Math.floor(this.y / TILE_SIZE);
             }
             return;
         }
@@ -452,7 +451,8 @@ const Player = {
         if (newX < 0 || newX >= tiles[0].length) return;
 
         const tile = tiles[this.gridY][newX];
-        if (tile !== 1 && tile !== 3 && tile !== 6) {
+        // Allow moving into goal tile (6), but not into walls (1) or locked doors (3)
+        if (tile !== 1 && tile !== 3) {
             this.startX = this.x;
             this.targetGridX = newX;
             this.isMoving = true;
@@ -469,7 +469,8 @@ const Player = {
         // In the air, only check the current Y grid position for walls
         const checkY = Math.max(0, Math.min(tiles.length - 1, this.gridY));
         const tile = tiles[checkY][newX];
-        if (tile !== 1 && tile !== 6) {
+        // Only block on solid walls (1), allow everything else including goal (6)
+        if (tile !== 1) {
             this.startX = this.x;
             this.targetGridX = newX;
             this.isMoving = true;
@@ -1031,4 +1032,4 @@ Player.init();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v0.6 - Air control during jump + continuous stepping');
+console.log('Dreamworld v0.7 - Slower Pokemon-style stepping + fixed goal/landing');

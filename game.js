@@ -1473,6 +1473,7 @@ const Player = {
     fallSpeed: 0,
     facing: 1,
     facingY: 1, // For top-down shooting direction
+    facingDir: 'down', // Cardinal direction: 'up', 'down', 'left', 'right'
     animFrame: 0,
     animTimer: 0,
     shootCooldown: 0,
@@ -1496,6 +1497,9 @@ const Player = {
         this.meleeActive = 0;
         this.chargeTime = 0;
         this.isCharging = false;
+        this.facingDir = 'down';
+        this.facing = 1;
+        this.facingY = 1;
     },
 
     update() {
@@ -1685,25 +1689,42 @@ const Player = {
         } else {
             let dx = 0, dy = 0;
             let moveKey = null;
+            let desiredDir = null;
 
             // Check each direction with tap/hold logic
             if (canMoveWithKey('ArrowUp') || canMoveWithKey('KeyW')) {
-                dy = -1; this.facingY = -1;
+                desiredDir = 'up';
+                dy = -1;
                 moveKey = GameState.keysPressed['ArrowUp'] ? 'ArrowUp' : 'KeyW';
             } else if (canMoveWithKey('ArrowDown') || canMoveWithKey('KeyS')) {
-                dy = 1; this.facingY = 1;
+                desiredDir = 'down';
+                dy = 1;
                 moveKey = GameState.keysPressed['ArrowDown'] ? 'ArrowDown' : 'KeyS';
             } else if (canMoveWithKey('ArrowLeft') || canMoveWithKey('KeyA')) {
-                dx = -1; this.facing = -1; this.facingY = 0;
+                desiredDir = 'left';
+                dx = -1;
                 moveKey = GameState.keysPressed['ArrowLeft'] ? 'ArrowLeft' : 'KeyA';
             } else if (canMoveWithKey('ArrowRight') || canMoveWithKey('KeyD')) {
-                dx = 1; this.facing = 1; this.facingY = 0;
+                desiredDir = 'right';
+                dx = 1;
                 moveKey = GameState.keysPressed['ArrowRight'] ? 'ArrowRight' : 'KeyD';
             }
 
-            if ((dx !== 0 || dy !== 0) && moveKey) {
-                if (this.tryMove(dx, dy, Levels.getReal())) {
-                    markKeyMoved(moveKey);
+            if (desiredDir && moveKey) {
+                // Check if we need to turn first
+                if (this.facingDir !== desiredDir) {
+                    // Just turn to face the new direction, don't move
+                    this.facingDir = desiredDir;
+                    if (desiredDir === 'up') { this.facingY = -1; this.facing = 0; }
+                    else if (desiredDir === 'down') { this.facingY = 1; this.facing = 0; }
+                    else if (desiredDir === 'left') { this.facing = -1; this.facingY = 0; }
+                    else if (desiredDir === 'right') { this.facing = 1; this.facingY = 0; }
+                    markKeyMoved(moveKey); // Consume the key press
+                } else {
+                    // Already facing this direction, try to move
+                    if (this.tryMove(dx, dy, Levels.getReal())) {
+                        markKeyMoved(moveKey);
+                    }
                 }
             }
         }
@@ -1781,19 +1802,29 @@ const Player = {
             return;
         }
 
-        // Input with tap/hold logic
+        // Input with tap/hold logic - turn first, then move
         let moveKey = null;
+        let desiredFacing = null;
+
         if (canMoveWithKey('ArrowLeft') || canMoveWithKey('KeyA')) {
-            this.facing = -1;
+            desiredFacing = -1;
             moveKey = GameState.keysPressed['ArrowLeft'] ? 'ArrowLeft' : 'KeyA';
-            if (this.tryMoveSide(-1, tiles)) {
-                markKeyMoved(moveKey);
-            }
         } else if (canMoveWithKey('ArrowRight') || canMoveWithKey('KeyD')) {
-            this.facing = 1;
+            desiredFacing = 1;
             moveKey = GameState.keysPressed['ArrowRight'] ? 'ArrowRight' : 'KeyD';
-            if (this.tryMoveSide(1, tiles)) {
+        }
+
+        if (desiredFacing !== null && moveKey) {
+            if (this.facing !== desiredFacing) {
+                // Just turn to face the new direction, don't move
+                this.facing = desiredFacing;
+                this.facingDir = desiredFacing === -1 ? 'left' : 'right';
                 markKeyMoved(moveKey);
+            } else {
+                // Already facing this direction, try to move
+                if (this.tryMoveSide(desiredFacing, tiles)) {
+                    markKeyMoved(moveKey);
+                }
             }
         }
 

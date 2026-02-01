@@ -181,105 +181,129 @@ const Audio8Bit = {
         osc.stop(this.ctx.currentTime + 0.5);
     },
 
-    // 8-bit retro music track
+    // 8-bit space trap music track
     startMusic() {
         if (!this.ctx || this.musicPlaying) return;
         this.resume();
         this.musicPlaying = true;
 
-        // Music parameters
-        const bpm = 140;
+        // Music parameters - slow spacey trap
+        const bpm = 100;
         const beatTime = 60 / bpm;
-        const barTime = beatTime * 4;
 
-        // Note frequencies (C major / A minor pentatonic vibes)
+        // Note frequencies - minor key for spacey vibe
         const notes = {
-            C3: 130.81, D3: 146.83, E3: 164.81, G3: 196.00, A3: 220.00,
-            C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00,
-            C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880.00
+            C2: 65.41, E2: 82.41, G2: 98.00, A2: 110.00, B2: 123.47,
+            C3: 130.81, D3: 146.83, Eb3: 155.56, E3: 164.81, G3: 196.00, A3: 220.00, B3: 246.94,
+            C4: 261.63, D4: 293.66, Eb4: 311.13, E4: 329.63, G4: 392.00, A4: 440.00, B4: 493.88,
+            C5: 523.25, D5: 587.33, Eb5: 622.25, E5: 659.25, G5: 783.99, A5: 880.00,
+            C6: 1046.50, E6: 1318.51, G6: 1567.98
         };
 
-        // Melody pattern (plays over 8 bars, then loops)
+        // Airy space melody - high notes, long sustains, sparse
         const melody = [
-            // Bar 1-2: Main theme
-            { note: 'E4', start: 0, dur: 0.5 },
-            { note: 'G4', start: 0.5, dur: 0.5 },
-            { note: 'A4', start: 1, dur: 0.5 },
-            { note: 'G4', start: 1.5, dur: 0.5 },
-            { note: 'E4', start: 2, dur: 1 },
-            { note: 'D4', start: 3, dur: 0.5 },
-            { note: 'C4', start: 3.5, dur: 0.5 },
+            // Bar 1-2: Floating intro
+            { note: 'E5', start: 0, dur: 2 },
+            { note: 'G5', start: 2, dur: 1 },
+            { note: 'A5', start: 3.5, dur: 0.5 },
             // Bar 3-4
-            { note: 'D4', start: 4, dur: 0.5 },
-            { note: 'E4', start: 4.5, dur: 0.5 },
-            { note: 'G4', start: 5, dur: 1 },
-            { note: 'A4', start: 6, dur: 0.5 },
-            { note: 'G4', start: 6.5, dur: 0.5 },
-            { note: 'E4', start: 7, dur: 1 },
-            // Bar 5-6: Variation
-            { note: 'A4', start: 8, dur: 0.5 },
-            { note: 'G4', start: 8.5, dur: 0.5 },
-            { note: 'E4', start: 9, dur: 0.5 },
-            { note: 'D4', start: 9.5, dur: 0.5 },
-            { note: 'C4', start: 10, dur: 1 },
-            { note: 'D4', start: 11, dur: 0.5 },
-            { note: 'E4', start: 11.5, dur: 0.5 },
+            { note: 'G5', start: 4, dur: 1.5 },
+            { note: 'E5', start: 6, dur: 2 },
+            // Bar 5-6: Higher floating
+            { note: 'A5', start: 8, dur: 1 },
+            { note: 'G5', start: 9, dur: 1 },
+            { note: 'E5', start: 10, dur: 1 },
+            { note: 'D5', start: 11.5, dur: 0.5 },
             // Bar 7-8
-            { note: 'G4', start: 12, dur: 1 },
-            { note: 'A4', start: 13, dur: 0.5 },
-            { note: 'C5', start: 13.5, dur: 0.5 },
-            { note: 'A4', start: 14, dur: 1 },
-            { note: 'G4', start: 15, dur: 1 },
+            { note: 'E5', start: 12, dur: 2 },
+            { note: 'G5', start: 14, dur: 1 },
+            { note: 'E5', start: 15.5, dur: 0.5 },
         ];
 
-        // Bass pattern (2 bar loop)
+        // Airy pad notes - very long, background texture
+        const pad = [
+            { note: 'C4', start: 0, dur: 8 },
+            { note: 'G4', start: 0, dur: 8 },
+            { note: 'E4', start: 8, dur: 8 },
+            { note: 'A4', start: 8, dur: 8 },
+        ];
+
+        // Square synth bass - 808 style sub bass
         const bass = [
-            { note: 'C3', start: 0, dur: 0.25 },
-            { note: 'C3', start: 0.5, dur: 0.25 },
-            { note: 'G3', start: 1, dur: 0.25 },
-            { note: 'G3', start: 1.5, dur: 0.25 },
-            { note: 'A3', start: 2, dur: 0.25 },
-            { note: 'A3', start: 2.5, dur: 0.25 },
-            { note: 'G3', start: 3, dur: 0.25 },
-            { note: 'E3', start: 3.5, dur: 0.25 },
+            // Bar 1-2
+            { note: 'C2', start: 0, dur: 0.5 },
+            { note: 'C2', start: 1.5, dur: 0.25 },
+            { note: 'C2', start: 2, dur: 0.5 },
+            { note: 'G2', start: 3.5, dur: 0.25 },
+            // Bar 3-4
+            { note: 'A2', start: 4, dur: 0.5 },
+            { note: 'A2', start: 5.5, dur: 0.25 },
+            { note: 'G2', start: 6, dur: 0.5 },
+            { note: 'E2', start: 7, dur: 0.5 },
+            // Bar 5-6
+            { note: 'C2', start: 8, dur: 0.5 },
+            { note: 'C2', start: 9.5, dur: 0.25 },
+            { note: 'E2', start: 10, dur: 0.5 },
+            { note: 'G2', start: 11.5, dur: 0.25 },
+            // Bar 7-8
+            { note: 'A2', start: 12, dur: 0.5 },
+            { note: 'G2', start: 13.5, dur: 0.25 },
+            { note: 'E2', start: 14, dur: 0.5 },
+            { note: 'C2', start: 15.5, dur: 0.25 },
         ];
 
-        // Drum pattern (1 bar loop) - using noise
+        // 808 trap drum pattern - kicks, snares, hi-hat rolls
         const drums = [
-            { type: 'kick', start: 0 },
+            // Bar 1
+            { type: '808kick', start: 0 },
             { type: 'hat', start: 0.25 },
-            { type: 'snare', start: 0.5 },
+            { type: 'hat', start: 0.5 },
             { type: 'hat', start: 0.75 },
-            { type: 'kick', start: 1 },
+            { type: '808snare', start: 1 },
             { type: 'hat', start: 1.25 },
-            { type: 'snare', start: 1.5 },
+            { type: 'hat', start: 1.5 },
             { type: 'hat', start: 1.75 },
+            // Bar 2
+            { type: '808kick', start: 2 },
+            { type: 'hat', start: 2.25 },
+            { type: 'hat', start: 2.5 },
+            { type: '808kick', start: 2.75 },
+            { type: '808snare', start: 3 },
+            // Hi-hat roll
+            { type: 'hat', start: 3.25 },
+            { type: 'hat', start: 3.375 },
+            { type: 'hat', start: 3.5 },
+            { type: 'hat', start: 3.625 },
+            { type: 'hat', start: 3.75 },
+            { type: 'hat', start: 3.875 },
         ];
 
-        const loopLength = 16 * beatTime; // 16 beats = 8 bars at 2 beats per bar... wait, 4 beats per bar
-        // Actually 16 beats = 4 bars. Let me recalc: at 140bpm, 16 beats takes ~6.86 seconds
+        const loopLength = 16 * beatTime; // 16 beats
 
         const scheduleMusic = () => {
             if (!this.musicPlaying) return;
 
             const now = this.ctx.currentTime;
 
-            // Schedule melody
+            // Schedule airy melody with delay effect
             melody.forEach(n => {
-                this.playNote(notes[n.note], now + n.start * beatTime, n.dur * beatTime, 'square', 0.15);
+                this.playSpaceMelody(notes[n.note], now + n.start * beatTime, n.dur * beatTime);
             });
 
-            // Schedule bass (loop 4 times for 16 beats)
-            for (let i = 0; i < 4; i++) {
-                bass.forEach(n => {
-                    this.playNote(notes[n.note], now + (n.start + i * 4) * beatTime, n.dur * beatTime, 'triangle', 0.2);
-                });
-            }
+            // Schedule background pad
+            pad.forEach(n => {
+                this.playPad(notes[n.note], now + n.start * beatTime, n.dur * beatTime);
+            });
 
-            // Schedule drums (loop 8 times for 16 beats)
-            for (let i = 0; i < 8; i++) {
+            // Schedule 808 bass
+            bass.forEach(n => {
+                this.play808Bass(notes[n.note], now + n.start * beatTime, n.dur * beatTime);
+            });
+
+            // Schedule trap drums (loop 4 times for 16 beats)
+            for (let i = 0; i < 4; i++) {
                 drums.forEach(d => {
-                    this.playDrum(d.type, now + (d.start + i * 2) * beatTime);
+                    this.playTrapDrum(d.type, now + (d.start + i * 4) * beatTime);
                 });
             }
 
@@ -290,32 +314,103 @@ const Audio8Bit = {
         scheduleMusic();
     },
 
-    playNote(freq, startTime, duration, type, volume) {
+    // Airy space melody with delay
+    playSpaceMelody(freq, startTime, duration) {
+        if (!this.ctx) return;
+
+        // Main note
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+
+        filter.type = 'lowpass';
+        filter.frequency.value = 2000;
+        filter.Q.value = 1;
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.musicGain);
+
+        // Soft attack, long release
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.12, startTime + 0.1);
+        gain.gain.setValueAtTime(0.12, startTime + duration - 0.2);
+        gain.gain.linearRampToValueAtTime(0, startTime + duration + 0.3);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration + 0.3);
+
+        // Delay echo
+        const osc2 = this.ctx.createOscillator();
+        const gain2 = this.ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.value = freq;
+        osc2.connect(gain2);
+        gain2.connect(this.musicGain);
+
+        const delayTime = 0.3;
+        gain2.gain.setValueAtTime(0, startTime + delayTime);
+        gain2.gain.linearRampToValueAtTime(0.06, startTime + delayTime + 0.1);
+        gain2.gain.linearRampToValueAtTime(0, startTime + delayTime + duration * 0.5);
+
+        osc2.start(startTime + delayTime);
+        osc2.stop(startTime + delayTime + duration * 0.5);
+    },
+
+    // Background pad
+    playPad(freq, startTime, duration) {
         if (!this.ctx) return;
 
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
-        osc.type = type;
+        osc.type = 'sine';
         osc.frequency.value = freq;
 
         osc.connect(gain);
         gain.connect(this.musicGain);
 
-        // Envelope
+        // Very soft, slow attack/release
         gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(volume, startTime + 0.01);
-        gain.gain.setValueAtTime(volume, startTime + duration - 0.02);
+        gain.gain.linearRampToValueAtTime(0.04, startTime + 1);
+        gain.gain.setValueAtTime(0.04, startTime + duration - 1);
         gain.gain.linearRampToValueAtTime(0, startTime + duration);
 
         osc.start(startTime);
         osc.stop(startTime + duration);
     },
 
-    playDrum(type, startTime) {
+    // 808 sub bass
+    play808Bass(freq, startTime, duration) {
         if (!this.ctx) return;
 
-        if (type === 'kick') {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.value = freq;
+
+        osc.connect(gain);
+        gain.connect(this.musicGain);
+
+        // Punchy attack, quick decay
+        gain.gain.setValueAtTime(0.25, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.15, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+    },
+
+    // 808 trap drums
+    playTrapDrum(type, startTime) {
+        if (!this.ctx) return;
+
+        if (type === '808kick') {
+            // Deep 808 kick with pitch drop
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
 
@@ -323,17 +418,36 @@ const Audio8Bit = {
             osc.connect(gain);
             gain.connect(this.musicGain);
 
+            // Pitch drops from 150 to 40
             osc.frequency.setValueAtTime(150, startTime);
-            osc.frequency.exponentialRampToValueAtTime(40, startTime + 0.1);
+            osc.frequency.exponentialRampToValueAtTime(40, startTime + 0.15);
 
-            gain.gain.setValueAtTime(0.4, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
+            // Long tail
+            gain.gain.setValueAtTime(0.5, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.4);
+
+        } else if (type === '808snare') {
+            // Punchy snare with noise tail
+            const osc = this.ctx.createOscillator();
+            const oscGain = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.value = 180;
+            osc.connect(oscGain);
+            oscGain.connect(this.musicGain);
+
+            oscGain.gain.setValueAtTime(0.3, startTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
 
             osc.start(startTime);
             osc.stop(startTime + 0.15);
-        } else if (type === 'snare') {
-            // Noise burst
-            const bufferSize = this.ctx.sampleRate * 0.1;
+
+            // Noise component
+            const bufferSize = this.ctx.sampleRate * 0.2;
             const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) {
@@ -341,24 +455,25 @@ const Audio8Bit = {
             }
 
             const noise = this.ctx.createBufferSource();
-            const gain = this.ctx.createGain();
+            const noiseGain = this.ctx.createGain();
             const filter = this.ctx.createBiquadFilter();
 
             noise.buffer = buffer;
             filter.type = 'highpass';
-            filter.frequency.value = 1000;
+            filter.frequency.value = 2000;
 
             noise.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.musicGain);
+            filter.connect(noiseGain);
+            noiseGain.connect(this.musicGain);
 
-            gain.gain.setValueAtTime(0.3, startTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+            noiseGain.gain.setValueAtTime(0.25, startTime);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.2);
 
             noise.start(startTime);
-            noise.stop(startTime + 0.1);
+            noise.stop(startTime + 0.2);
+
         } else if (type === 'hat') {
-            // Short noise
+            // Crisp hi-hat
             const bufferSize = this.ctx.sampleRate * 0.05;
             const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
             const data = buffer.getChannelData(0);
@@ -372,13 +487,13 @@ const Audio8Bit = {
 
             noise.buffer = buffer;
             filter.type = 'highpass';
-            filter.frequency.value = 5000;
+            filter.frequency.value = 7000;
 
             noise.connect(filter);
             filter.connect(gain);
             gain.connect(this.musicGain);
 
-            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.setValueAtTime(0.08, startTime);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.05);
 
             noise.start(startTime);

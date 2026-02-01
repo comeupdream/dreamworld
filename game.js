@@ -6,11 +6,11 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // Game dimensions - Real World is 10x10 SQUARE, Dream World same width
-const TILE_SIZE = 32;
+const TILE_SIZE = 64; // Doubled from 32 for larger display
 const REAL_WORLD_TILES = 10; // 10x10 square like a chessboard
-const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 320px - matches square width
-const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 320px - square
-const DREAM_WORLD_HEIGHT = 6 * TILE_SIZE; // 192px - shorter for sidescroller
+const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 640px - matches square width
+const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 640px - square
+const DREAM_WORLD_HEIGHT = 6 * TILE_SIZE; // 384px - shorter for sidescroller
 const DIVIDER_HEIGHT = 8;
 const GAME_HEIGHT = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT + DREAM_WORLD_HEIGHT;
 
@@ -181,8 +181,8 @@ function consumeKeyPress(code) {
 const Player = {
     x: 64,
     y: 64,
-    width: 28,
-    height: 28,
+    width: 56, // Doubled from 28
+    height: 56, // Doubled from 28
 
     // Grid position
     gridX: 2,
@@ -210,8 +210,8 @@ const Player = {
     init() {
         this.gridX = 2;
         this.gridY = 2;
-        this.x = this.gridX * TILE_SIZE + 2;
-        this.y = this.gridY * TILE_SIZE + 2;
+        this.x = this.gridX * TILE_SIZE + 4;
+        this.y = this.gridY * TILE_SIZE + 4;
         this.isMoving = false;
         this.isJumping = false;
         this.isFalling = false;
@@ -246,8 +246,8 @@ const Player = {
             if (this.moveProgress >= 1) {
                 this.finishMove();
             } else {
-                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
-                this.y = this.startY + (this.targetGridY * TILE_SIZE + 2 - this.startY) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
+                this.y = this.startY + (this.targetGridY * TILE_SIZE + 4 - this.startY) * this.moveProgress;
             }
         } else {
             // Check for input - allow holding keys for continuous stepping (like Pokemon)
@@ -289,11 +289,11 @@ const Player = {
                 this.moveProgress += this.moveSpeed;
                 if (this.moveProgress >= 1) {
                     this.gridX = this.targetGridX;
-                    this.x = this.gridX * TILE_SIZE + 2;
+                    this.x = this.gridX * TILE_SIZE + 4;
                     this.isMoving = false;
                     this.moveProgress = 0;
                 } else {
-                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
                 }
             }
 
@@ -302,7 +302,7 @@ const Player = {
                 this.isJumping = false;
                 this.jumpPhase = 0;
                 this.gridY = this.targetGridY;
-                this.y = this.gridY * TILE_SIZE + 2;
+                this.y = this.gridY * TILE_SIZE + 4;
                 this.startFalling(tiles);
             } else {
                 // Smooth jump arc
@@ -312,7 +312,7 @@ const Player = {
                 const arcHeight = jumpHeight * Math.sin(t * Math.PI);
 
                 const startY = this.startY;
-                const endY = this.targetGridY * TILE_SIZE + 2;
+                const endY = this.targetGridY * TILE_SIZE + 4;
 
                 // Linear interpolation for Y position plus arc offset
                 this.y = startY + (endY - startY) * t - arcHeight;
@@ -341,11 +341,11 @@ const Player = {
                 this.moveProgress += this.moveSpeed;
                 if (this.moveProgress >= 1) {
                     this.gridX = this.targetGridX;
-                    this.x = this.gridX * TILE_SIZE + 2;
+                    this.x = this.gridX * TILE_SIZE + 4;
                     this.isMoving = false;
                     this.moveProgress = 0;
                 } else {
-                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
                 }
             }
 
@@ -357,7 +357,7 @@ const Player = {
             if (feetTileY < tiles.length && this.hasGround(this.gridX, feetTileY, tiles)) {
                 // Land on top of this ground tile
                 this.gridY = feetTileY - 1;
-                this.y = this.gridY * TILE_SIZE + 2;
+                this.y = this.gridY * TILE_SIZE + 4;
                 this.isFalling = false;
                 this.fallSpeed = 0;
             } else if (feetTileY >= tiles.length) {
@@ -376,14 +376,14 @@ const Player = {
 
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
-                this.x = this.gridX * TILE_SIZE + 2;
+                this.x = this.gridX * TILE_SIZE + 4;
                 this.isMoving = false;
                 this.moveProgress = 0;
 
                 // Check if we need to fall
                 this.startFalling(tiles);
             } else {
-                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
             }
             return;
         }
@@ -508,8 +508,8 @@ const Player = {
     finishMove() {
         this.gridX = this.targetGridX;
         this.gridY = this.targetGridY;
-        this.x = this.gridX * TILE_SIZE + 2;
-        this.y = this.gridY * TILE_SIZE + 2;
+        this.x = this.gridX * TILE_SIZE + 4;
+        this.y = this.gridY * TILE_SIZE + 4;
         this.isMoving = false;
         this.moveProgress = 0;
     },
@@ -527,8 +527,8 @@ const Player = {
     respawnInDreamWorld() {
         this.gridX = 1;
         this.gridY = 1;
-        this.x = this.gridX * TILE_SIZE + 2;
-        this.y = this.gridY * TILE_SIZE + 2;
+        this.x = this.gridX * TILE_SIZE + 4;
+        this.y = this.gridY * TILE_SIZE + 4;
         this.isJumping = false;
         this.isFalling = false;
         this.isMoving = false;
@@ -571,50 +571,50 @@ const Player = {
         }
 
         const isAnimating = this.isMoving || this.isJumping;
-        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 2 : 0;
-        const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 3 : -3) : 0;
+        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 4 : 0;
+        const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 6 : -6) : 0;
 
-        // Legs
+        // Legs (all coords doubled)
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(4, 18 + bounce, 8, 8);
+        ctx.fillRect(8, 36 + bounce, 16, 16);
         ctx.fillStyle = shoeColor;
-        ctx.fillRect(2 - legOffset, 24 + bounce, 10, 4);
+        ctx.fillRect(4 - legOffset, 48 + bounce, 20, 8);
 
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(16, 18 + bounce, 8, 8);
+        ctx.fillRect(32, 36 + bounce, 16, 16);
         ctx.fillStyle = shoeColor;
-        ctx.fillRect(16 + legOffset, 24 + bounce, 10, 4);
+        ctx.fillRect(32 + legOffset, 48 + bounce, 20, 8);
 
         // Body
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(4, 8 + bounce, 20, 12);
+        ctx.fillRect(8, 16 + bounce, 40, 24);
 
         // Head
         ctx.fillStyle = skinColor;
         ctx.beginPath();
-        ctx.arc(14, 6 + bounce, 8, 0, Math.PI * 2);
+        ctx.arc(28, 12 + bounce, 16, 0, Math.PI * 2);
         ctx.fill();
 
         // Hair/spikes
         ctx.fillStyle = isReal ? '#2255aa' : '#cc3355';
         ctx.beginPath();
-        ctx.moveTo(6, 2 + bounce);
-        ctx.lineTo(10, -4 + bounce);
-        ctx.lineTo(14, 2 + bounce);
+        ctx.moveTo(12, 4 + bounce);
+        ctx.lineTo(20, -8 + bounce);
+        ctx.lineTo(28, 4 + bounce);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(14, 0 + bounce);
-        ctx.lineTo(20, -6 + bounce);
-        ctx.lineTo(20, 4 + bounce);
+        ctx.moveTo(28, 0 + bounce);
+        ctx.lineTo(40, -12 + bounce);
+        ctx.lineTo(40, 8 + bounce);
         ctx.fill();
 
         // Eyes
         ctx.fillStyle = '#fff';
-        ctx.fillRect(10, 3 + bounce, 4, 5);
-        ctx.fillRect(16, 3 + bounce, 4, 5);
+        ctx.fillRect(20, 6 + bounce, 8, 10);
+        ctx.fillRect(32, 6 + bounce, 8, 10);
         ctx.fillStyle = '#000';
-        ctx.fillRect(12, 4 + bounce, 2, 3);
-        ctx.fillRect(18, 4 + bounce, 2, 3);
+        ctx.fillRect(24, 8 + bounce, 4, 6);
+        ctx.fillRect(36, 8 + bounce, 4, 6);
 
         ctx.restore();
     }
@@ -915,8 +915,8 @@ function switchWorld() {
         GameState.currentWorld = 'dream';
         Player.gridX = 1;
         Player.gridY = 1;
-        Player.x = Player.gridX * TILE_SIZE + 2;
-        Player.y = Player.gridY * TILE_SIZE + 2;
+        Player.x = Player.gridX * TILE_SIZE + 4;
+        Player.y = Player.gridY * TILE_SIZE + 4;
         Player.isMoving = false;
         Player.isJumping = false;
         Player.isFalling = false;
@@ -926,8 +926,8 @@ function switchWorld() {
         GameState.currentWorld = 'real';
         Player.gridX = 6;
         Player.gridY = 6;
-        Player.x = Player.gridX * TILE_SIZE + 2;
-        Player.y = Player.gridY * TILE_SIZE + 2;
+        Player.x = Player.gridX * TILE_SIZE + 4;
+        Player.y = Player.gridY * TILE_SIZE + 4;
         Player.isMoving = false;
         Player.moveProgress = 0;
     }
@@ -1033,4 +1033,4 @@ Player.init();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v0.8 - Square Real World (320x320) + matching viewports');
+console.log('Dreamworld v0.9 - Doubled size (640x640 Real World, 64px tiles)');

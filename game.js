@@ -7,7 +7,7 @@ const ctx = canvas.getContext('2d');
 
 // Game dimensions - split screen
 const GAME_WIDTH = 640;
-const WORLD_HEIGHT = 256; // 8 tiles per world
+const WORLD_HEIGHT = 256;
 const DIVIDER_HEIGHT = 8;
 const GAME_HEIGHT = WORLD_HEIGHT * 2 + DIVIDER_HEIGHT;
 const TILE_SIZE = 32;
@@ -25,7 +25,10 @@ const GameState = {
     currentWorld: 'real',
     inventory: [],
     keysPressed: {},
-    portalCooldown: 0 // Prevents instant re-teleport
+    portalCooldown: 0,
+    cameraX: 0, // Camera offset for dream world scrolling
+    nearDoor: null, // Track if player is near an unlocked door
+    level: 1
 };
 
 // ============================================
@@ -48,30 +51,29 @@ document.addEventListener('keyup', (e) => {
 // ============================================
 
 const Player = {
-    // Position (in pixels, but snaps to grid in real world)
     x: 64,
     y: 64,
     width: 28,
     height: 28,
 
-    // Grid-based movement for Real World (Pokemon style)
-    gridX: 2,  // Tile position
+    // Grid-based movement for Real World
+    gridX: 2,
     gridY: 2,
     isMoving: false,
     moveProgress: 0,
-    moveSpeed: 0.15, // How fast to move between tiles (0-1 per frame)
-    moveDirection: null, // 'up', 'down', 'left', 'right'
+    moveSpeed: 0.15,
+    moveDirection: null,
     targetX: 2,
     targetY: 2,
 
-    // Side-scroller physics for Dream World
+    // Side-scroller physics
     velX: 0,
     velY: 0,
     gravity: 0.6,
-    jumpForce: -11,
+    jumpForce: -12,
     onGround: false,
-    moveSpeedSide: 4,
-    facing: 1, // 1 = right, -1 = left
+    moveSpeedSide: 5,
+    facing: 1,
 
     // Animation
     animFrame: 0,
@@ -83,7 +85,6 @@ const Player = {
     },
 
     update() {
-        // Decrease portal cooldown
         if (GameState.portalCooldown > 0) {
             GameState.portalCooldown--;
         }
@@ -92,9 +93,10 @@ const Player = {
             this.updateTopDown();
         } else {
             this.updateSideScroller();
+            this.updateCamera();
         }
 
-        // Animation timer
+        // Animation
         this.animTimer++;
         if (this.animTimer > 8) {
             this.animTimer = 0;
@@ -102,14 +104,11 @@ const Player = {
         }
     },
 
-    // Pokemon-style grid movement
     updateTopDown() {
         if (this.isMoving) {
-            // Continue current movement
             this.moveProgress += this.moveSpeed;
 
             if (this.moveProgress >= 1) {
-                // Finished moving to target tile
                 this.moveProgress = 0;
                 this.isMoving = false;
                 this.gridX = this.targetX;
@@ -117,7 +116,6 @@ const Player = {
                 this.x = this.gridX * TILE_SIZE + 2;
                 this.y = this.gridY * TILE_SIZE + 2;
             } else {
-                // Interpolate position
                 const startX = this.gridX * TILE_SIZE + 2;
                 const startY = this.gridY * TILE_SIZE + 2;
                 const endX = this.targetX * TILE_SIZE + 2;
@@ -126,7 +124,6 @@ const Player = {
                 this.y = startY + (endY - startY) * this.moveProgress;
             }
         } else {
-            // Check for new movement input (only one direction, priority: up > down > left > right)
             let dx = 0, dy = 0;
 
             if (GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) {
@@ -147,7 +144,6 @@ const Player = {
                 const newGridX = this.gridX + dx;
                 const newGridY = this.gridY + dy;
 
-                // Check if can move to target tile
                 if (this.canMoveTo(newGridX, newGridY, RealWorld)) {
                     this.targetX = newGridX;
                     this.targetY = newGridY;
@@ -164,11 +160,9 @@ const Player = {
             return false;
         }
         const tile = world.tiles[tileY][tileX];
-        // Can't walk through walls (1) or locked doors (3)
         return tile !== 1 && tile !== 3;
     },
 
-    // Side-scroller movement
     updateSideScroller() {
         // Horizontal movement
         this.velX = 0;
@@ -181,17 +175,17 @@ const Player = {
             this.facing = 1;
         }
 
-        // Jumping (only when on ground)
+        // Jumping
         if ((GameState.keysPressed['Space'] || GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) && this.onGround) {
             this.velY = this.jumpForce;
             this.onGround = false;
         }
 
-        // Apply gravity
+        // Gravity
         this.velY += this.gravity;
-        if (this.velY > 14) this.velY = 14; // Terminal velocity
+        if (this.velY > 14) this.velY = 14;
 
-        // Move horizontally
+        // Horizontal collision
         const newX = this.x + this.velX;
         if (!this.collidesWithWorld(newX, this.y, DreamWorld)) {
             this.x = newX;
@@ -199,30 +193,40 @@ const Player = {
             this.velX = 0;
         }
 
-        // Move vertically
+        // Vertical collision
         const newY = this.y + this.velY;
         if (!this.collidesWithWorld(this.x, newY, DreamWorld)) {
             this.y = newY;
             this.onGround = false;
         } else {
             if (this.velY > 0) {
-                // Landing on ground - snap to tile top
                 this.onGround = true;
                 this.y = Math.floor((this.y + this.height) / TILE_SIZE) * TILE_SIZE - this.height;
             } else {
-                // Hit ceiling
                 this.y = Math.ceil(this.y / TILE_SIZE) * TILE_SIZE;
             }
             this.velY = 0;
         }
 
-        // Keep in horizontal bounds
-        this.x = Math.max(0, Math.min(GAME_WIDTH - this.width, this.x));
+        // Keep in bounds (left side only - right side scrolls)
+        if (this.x < 0) this.x = 0;
 
-        // Fell off bottom - respawn
+        // Fell off bottom
         if (this.y > WORLD_HEIGHT + 50) {
             this.respawnInDreamWorld();
         }
+    },
+
+    updateCamera() {
+        // Camera follows player, keeping them centered-ish
+        const targetCameraX = this.x - GAME_WIDTH / 3;
+        const maxCameraX = DreamWorld.getWidth() - GAME_WIDTH;
+
+        // Smooth camera follow
+        GameState.cameraX += (targetCameraX - GameState.cameraX) * 0.1;
+
+        // Clamp camera
+        GameState.cameraX = Math.max(0, Math.min(maxCameraX, GameState.cameraX));
     },
 
     collidesWithWorld(x, y, world) {
@@ -249,11 +253,12 @@ const Player = {
     },
 
     respawnInDreamWorld() {
-        // Spawn on ground near portal
-        this.x = 1 * TILE_SIZE;
-        this.y = 6 * TILE_SIZE - this.height; // Row 6 is ground level
+        // Spawn at portal position
+        this.x = 1 * TILE_SIZE + 2;
+        this.y = 2 * TILE_SIZE;
         this.velY = 0;
-        this.onGround = true;
+        this.onGround = false;
+        GameState.cameraX = 0;
     },
 
     getRect() {
@@ -262,10 +267,14 @@ const Player = {
 
     draw() {
         const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-        const drawX = this.x;
+        // Apply camera offset for dream world
+        const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+        const drawX = this.x - cameraOffset;
         const drawY = this.y + yOffset;
 
-        // Determine colors based on world
+        // Don't draw if off screen
+        if (drawX < -this.width || drawX > GAME_WIDTH) return;
+
         const isReal = GameState.currentWorld === 'real';
         const bodyColor = isReal ? '#4488ff' : '#ff6688';
         const shoeColor = '#aa2222';
@@ -273,31 +282,23 @@ const Player = {
 
         ctx.save();
 
-        // Flip sprite based on facing direction (for dream world)
         if (!isReal && this.facing === -1) {
             ctx.translate(drawX + this.width, drawY);
             ctx.scale(-1, 1);
-            ctx.translate(0, 0);
         } else {
             ctx.translate(drawX, drawY);
         }
 
-        // Animation bounce for walking
         const bounce = (this.isMoving || Math.abs(this.velX) > 0) ? Math.sin(this.animTimer * 0.5) * 2 : 0;
-
-        // === MARIO/SONIC STYLE CHARACTER ===
-
-        // Legs (when walking, alternate)
         const legOffset = (this.isMoving || Math.abs(this.velX) > 0) ?
             (this.animFrame % 2 === 0 ? 3 : -3) : 0;
 
-        // Left leg
+        // Legs
         ctx.fillStyle = bodyColor;
         ctx.fillRect(4, 18 + bounce, 8, 8);
         ctx.fillStyle = shoeColor;
         ctx.fillRect(2 - legOffset, 24 + bounce, 10, 4);
 
-        // Right leg
         ctx.fillStyle = bodyColor;
         ctx.fillRect(16, 18 + bounce, 8, 8);
         ctx.fillStyle = shoeColor;
@@ -307,13 +308,13 @@ const Player = {
         ctx.fillStyle = bodyColor;
         ctx.fillRect(4, 8 + bounce, 20, 12);
 
-        // Head (round)
+        // Head
         ctx.fillStyle = skinColor;
         ctx.beginPath();
         ctx.arc(14, 6 + bounce, 8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hair/spikes (Sonic-ish)
+        // Hair/spikes
         ctx.fillStyle = isReal ? '#2255aa' : '#cc3355';
         ctx.beginPath();
         ctx.moveTo(6, 2 + bounce);
@@ -330,8 +331,6 @@ const Player = {
         ctx.fillStyle = '#fff';
         ctx.fillRect(10, 3 + bounce, 4, 5);
         ctx.fillRect(16, 3 + bounce, 4, 5);
-
-        // Pupils
         ctx.fillStyle = '#000';
         ctx.fillRect(12, 4 + bounce, 2, 3);
         ctx.fillRect(18, 4 + bounce, 2, 3);
@@ -347,7 +346,6 @@ const Player = {
 const RealWorld = {
     name: 'REAL WORLD',
     bgColor: '#1a3320',
-    yOffset: 0,
     tiles: [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         [1,0,0,0,0,0,1,4,1,0,0,0,0,0,0,0,0,0,0,1],
@@ -372,7 +370,6 @@ const RealWorld = {
             }
         }
 
-        // Label
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(5, 5, 105, 22);
         ctx.fillStyle = '#90EE90';
@@ -388,7 +385,6 @@ const RealWorld = {
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#3a7540';
                 ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                // Brick pattern
                 ctx.fillStyle = '#2a5530';
                 ctx.fillRect(px + TILE_SIZE/2 - 1, py, 2, TILE_SIZE);
                 ctx.fillRect(px, py + TILE_SIZE/2 - 1, TILE_SIZE, 2);
@@ -427,10 +423,11 @@ const RealWorld = {
                 ctx.fillRect(px + TILE_SIZE/2, py + 24, 4, 3);
                 break;
             case 5:
+                // Unlocked door - open doorway
                 ctx.fillStyle = '#3a5530';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#1a3320';
-                ctx.fillRect(px + 10, py + 2, TILE_SIZE - 20, TILE_SIZE - 4);
+                ctx.fillRect(px + 8, py + 2, TILE_SIZE - 16, TILE_SIZE - 2);
                 break;
         }
     }
@@ -439,17 +436,21 @@ const RealWorld = {
 const DreamWorld = {
     name: 'DREAM WORLD',
     bgColor: '#2a1a3a',
-    yOffset: DREAM_WORLD_Y_OFFSET,
+    // Extended map - scrolls to the right
     tiles: [
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0],
-        [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0],
-        [1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,4,0,0],
-        [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+        [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
+        [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,1,6],
+        [0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,6],
+        [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,0,0,3,6],
+        [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,6],
+        [1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
     ],
+
+    getWidth() {
+        return this.tiles[0].length * TILE_SIZE;
+    },
 
     draw() {
         const gradient = ctx.createLinearGradient(0, DREAM_WORLD_Y_OFFSET, 0, GAME_HEIGHT);
@@ -459,40 +460,59 @@ const DreamWorld = {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, DREAM_WORLD_Y_OFFSET, GAME_WIDTH, WORLD_HEIGHT);
 
-        // Animated stars
+        // Stars (parallax - move slower than camera)
         ctx.fillStyle = '#ffffff';
-        for (let i = 0; i < 40; i++) {
-            const x = (i * 73 + Date.now() * 0.01) % GAME_WIDTH;
+        for (let i = 0; i < 50; i++) {
+            const baseX = (i * 73) % (GAME_WIDTH * 2);
+            const x = (baseX - GameState.cameraX * 0.3) % GAME_WIDTH;
             const y = DREAM_WORLD_Y_OFFSET + (i * 47) % (WORLD_HEIGHT - 60);
             const twinkle = Math.sin(Date.now() * 0.005 + i) * 0.5 + 0.5;
             ctx.globalAlpha = twinkle * 0.8;
             const size = (i % 3) + 1;
-            ctx.fillRect(x, y, size, size);
+            if (x >= 0 && x < GAME_WIDTH) {
+                ctx.fillRect(x, y, size, size);
+            }
         }
         ctx.globalAlpha = 1;
 
+        // Draw visible tiles only
+        const startTile = Math.floor(GameState.cameraX / TILE_SIZE);
+        const endTile = Math.ceil((GameState.cameraX + GAME_WIDTH) / TILE_SIZE) + 1;
+
         for (let y = 0; y < this.tiles.length; y++) {
-            for (let x = 0; x < this.tiles[y].length; x++) {
+            for (let x = startTile; x < Math.min(endTile, this.tiles[y].length); x++) {
                 const tile = this.tiles[y][x];
-                const px = x * TILE_SIZE;
+                const px = x * TILE_SIZE - GameState.cameraX;
                 const py = y * TILE_SIZE + DREAM_WORLD_Y_OFFSET;
                 this.drawTile(tile, px, py);
             }
         }
 
-        // Label
+        // Label (fixed position)
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(5, DREAM_WORLD_Y_OFFSET + 5, 115, 22);
         ctx.fillStyle = '#DDA0DD';
         ctx.font = 'bold 14px Courier New';
         ctx.textAlign = 'left';
         ctx.fillText('DREAM WORLD', 10, DREAM_WORLD_Y_OFFSET + 20);
+
+        // Show prompt if near door
+        if (GameState.nearDoor && GameState.currentWorld === 'dream') {
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(GAME_WIDTH/2 - 80, DREAM_WORLD_Y_OFFSET + WORLD_HEIGHT - 40, 160, 30);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText('Press E to enter', GAME_WIDTH/2, DREAM_WORLD_Y_OFFSET + WORLD_HEIGHT - 20);
+        }
     },
 
     drawTile(tile, px, py) {
+        // Skip if off screen
+        if (px < -TILE_SIZE || px > GAME_WIDTH) return;
+
         switch (tile) {
             case 1:
-                // Dreamy purple platforms
                 ctx.fillStyle = '#5a3a7a';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#7a5a9a';
@@ -501,12 +521,13 @@ const DreamWorld = {
                 ctx.fillRect(px + 2, py + TILE_SIZE - 4, TILE_SIZE - 4, 2);
                 break;
             case 2:
+                // Portal - spawn point
                 ctx.fillStyle = '#33ff99';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#66ffbb';
-                const pulse = 8 + Math.sin(Date.now() / 200) * 4;
+                const pulse2 = 8 + Math.sin(Date.now() / 200) * 4;
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse2, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
@@ -514,6 +535,7 @@ const DreamWorld = {
                 ctx.fill();
                 break;
             case 3:
+                // Locked door
                 ctx.fillStyle = '#654321';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#8B4513';
@@ -525,6 +547,7 @@ const DreamWorld = {
                 ctx.fillRect(px + TILE_SIZE/2 - 2, py + TILE_SIZE/2 - 4, 4, 8);
                 break;
             case 4:
+                // Key
                 ctx.fillStyle = '#C0C0C0';
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + 12, 7, 0, Math.PI * 2);
@@ -532,15 +555,27 @@ const DreamWorld = {
                 ctx.fillRect(px + TILE_SIZE/2 - 2, py + 16, 4, 10);
                 ctx.fillRect(px + TILE_SIZE/2, py + 20, 6, 3);
                 ctx.fillRect(px + TILE_SIZE/2, py + 24, 4, 3);
-                // Sparkle
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(px + TILE_SIZE/2 - 5, py + 10, 2, 2);
                 break;
             case 5:
-                ctx.fillStyle = '#3a2a4a';
+                // Unlocked door - can enter
+                ctx.fillStyle = '#4a3a2a';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#1a0a2a';
-                ctx.fillRect(px + 10, py + 2, TILE_SIZE - 20, TILE_SIZE - 4);
+                ctx.fillStyle = '#2a1a1a';
+                ctx.fillRect(px + 6, py + 2, TILE_SIZE - 12, TILE_SIZE - 2);
+                // Glowing entrance
+                ctx.fillStyle = '#ffaa33';
+                ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 300) * 0.2;
+                ctx.fillRect(px + 8, py + 4, TILE_SIZE - 16, TILE_SIZE - 4);
+                ctx.globalAlpha = 1;
+                break;
+            case 6:
+                // End wall / finish line marker
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#ffaa00';
+                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
                 break;
         }
     }
@@ -551,15 +586,15 @@ const DreamWorld = {
 // ============================================
 
 function checkInteractions() {
-    // Skip if portal cooldown is active
     if (GameState.portalCooldown > 0) return;
 
     const world = GameState.currentWorld === 'real' ? RealWorld : DreamWorld;
     const playerRect = Player.getRect();
 
-    // Get player center tile
     const centerX = Math.floor((Player.x + Player.width / 2) / TILE_SIZE);
     const centerY = Math.floor((Player.y + Player.height / 2) / TILE_SIZE);
+
+    GameState.nearDoor = null;
 
     for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
@@ -578,11 +613,13 @@ function checkInteractions() {
                 };
 
                 if (rectsOverlap(playerRect, tileRect)) {
+                    // Portal
                     if (tile === 2) {
                         switchWorld();
                         return;
                     }
 
+                    // Key
                     if (tile === 4) {
                         world.tiles[tileY][tileX] = 0;
                         const keyName = GameState.currentWorld === 'real' ? 'Golden Key' : 'Dream Key';
@@ -592,6 +629,7 @@ function checkInteractions() {
                         }
                     }
 
+                    // Locked door - unlock with key
                     if (tile === 3) {
                         const neededKey = GameState.currentWorld === 'real' ? 'Dream Key' : 'Golden Key';
                         if (GameState.inventory.includes(neededKey)) {
@@ -600,6 +638,20 @@ function checkInteractions() {
                             if (idx > -1) GameState.inventory.splice(idx, 1);
                             updateUI();
                         }
+                    }
+
+                    // Unlocked door - can enter with E
+                    if (tile === 5) {
+                        GameState.nearDoor = { x: tileX, y: tileY };
+                        if (GameState.keysPressed['KeyE']) {
+                            enterDoor();
+                            GameState.keysPressed['KeyE'] = false; // Prevent repeat
+                        }
+                    }
+
+                    // End goal
+                    if (tile === 6) {
+                        reachGoal();
                     }
                 }
             }
@@ -615,19 +667,20 @@ function rectsOverlap(a, b) {
 }
 
 function switchWorld() {
-    GameState.portalCooldown = 60; // 1 second cooldown at 60fps
+    GameState.portalCooldown = 60;
 
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';
-        // Spawn on ground in dream world, away from portal
-        Player.x = 0 * TILE_SIZE + 2;
-        Player.y = 6 * TILE_SIZE - Player.height; // On ground (row 6)
+        // Spawn AT the green portal in dream world
+        Player.x = 1 * TILE_SIZE + 2;
+        Player.y = 2 * TILE_SIZE;
         Player.velY = 0;
         Player.velX = 0;
-        Player.onGround = true;
+        Player.onGround = false;
+        Player.facing = 1;
+        GameState.cameraX = 0;
     } else {
         GameState.currentWorld = 'real';
-        // Spawn near portal in real world
         Player.gridX = 13;
         Player.gridY = 3;
         Player.targetX = 13;
@@ -637,6 +690,48 @@ function switchWorld() {
         Player.isMoving = false;
         Player.moveProgress = 0;
     }
+    updateUI();
+}
+
+function enterDoor() {
+    // For now - show completion message
+    // Later this will load next level
+    console.log('Entered door! Level complete!');
+    GameState.level++;
+
+    // Reset for next "level" (placeholder - just resets)
+    alert('Level Complete! Press OK to continue...');
+    resetLevel();
+}
+
+function reachGoal() {
+    console.log('Reached the goal!');
+    GameState.level++;
+    alert('You reached the end! Level Complete!');
+    resetLevel();
+}
+
+function resetLevel() {
+    // Reset to real world
+    GameState.currentWorld = 'real';
+    GameState.inventory = [];
+    GameState.cameraX = 0;
+    Player.gridX = 2;
+    Player.gridY = 2;
+    Player.targetX = 2;
+    Player.targetY = 2;
+    Player.x = Player.gridX * TILE_SIZE + 2;
+    Player.y = Player.gridY * TILE_SIZE + 2;
+    Player.isMoving = false;
+
+    // Reset doors to locked state
+    RealWorld.tiles[3][17] = 3;
+    DreamWorld.tiles[5][48] = 3;
+
+    // Reset keys
+    RealWorld.tiles[1][7] = 4;
+    DreamWorld.tiles[6][17] = 4;
+
     updateUI();
 }
 
@@ -652,7 +747,7 @@ function updateUI() {
     } else {
         indicator.textContent = 'DREAM WORLD';
         indicator.className = 'dream-world';
-        hintsEl.textContent = 'Arrows + Space to jump';
+        hintsEl.textContent = 'Arrows + Space | E to enter doors';
     }
 
     inventoryEl.textContent = GameState.inventory.length > 0
@@ -664,7 +759,6 @@ function drawDivider() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, WORLD_HEIGHT, GAME_WIDTH, DIVIDER_HEIGHT);
 
-    // Gradient fade on edges
     const gradTop = ctx.createLinearGradient(0, WORLD_HEIGHT - 10, 0, WORLD_HEIGHT);
     gradTop.addColorStop(0, 'transparent');
     gradTop.addColorStop(1, 'rgba(0,0,0,0.5)');
@@ -725,4 +819,4 @@ Player.init();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v0.2 - Pokemon-style movement + Sidescroller!');
+console.log('Dreamworld v0.3 - Scrolling Dream World!');

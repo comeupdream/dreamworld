@@ -1,17 +1,17 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.1 - Enemy AI & Levels Update
+// v1.2 - Smaller Tiles & Grid Update
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game dimensions (scaled down ~12%)
-const TILE_SIZE = 56;
-const REAL_WORLD_TILES = 10;
+// Game dimensions - smaller tiles, bigger grid
+const TILE_SIZE = 28;
+const REAL_WORLD_TILES = 20;
 const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 560px
 const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 560px
-const DREAM_WORLD_HEIGHT = 6 * TILE_SIZE; // 336px
+const DREAM_WORLD_HEIGHT = 12 * TILE_SIZE; // 336px (12 rows now)
 const DIVIDER_HEIGHT = 8;
 const GAME_HEIGHT = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT + DREAM_WORLD_HEIGHT;
 
@@ -26,104 +26,154 @@ const DREAM_WORLD_Y_OFFSET = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT;
 
 const LevelTemplates = {
     realWorld: {
+        // 20x20 grids
         1: [
-            [1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,1,4,0,1],
-            [1,0,0,0,0,0,1,0,0,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,1,1,0,1],
-            [1,0,0,0,0,0,1,2,0,1],
-            [1,0,0,0,0,0,1,0,3,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         ],
         2: [
-            [1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,1,0,0,0,4,1],
-            [1,0,0,0,1,0,0,0,0,1],
-            [1,0,0,0,0,0,0,1,0,1],
-            [1,1,0,0,0,0,0,1,0,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,0,1,0,0,0,1,2,0,1],
-            [1,0,1,0,0,0,1,0,3,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,4,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         ],
         3: [
-            [1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,1,0,0,4,0,1],
-            [1,0,1,0,1,0,1,1,0,1],
-            [1,0,1,0,0,0,0,0,0,1],
-            [1,0,1,1,0,1,1,0,0,1],
-            [1,0,0,0,0,0,0,0,1,1],
-            [1,1,0,1,0,0,0,2,0,1],
-            [1,0,0,1,0,1,0,0,3,1],
-            [1,0,0,0,0,1,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,4,0,0,1],
+            [1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,0,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
+            [1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,3,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         ]
     },
     dreamWorld: {
+        // 12 rows tall, longer horizontally
         1: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,6],
-            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,1,1,6],
-            [0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,3,6],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,4,0,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,3,6],
+            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ],
         2: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,1,6],
-            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,4,1,1,6],
-            [0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,1,1,0,3,6],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,3,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ],
         3: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,1,6],
-            [0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1,0,0,0,4,1,1,6],
-            [0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,3,6],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,3,6],
+            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ]
     },
-    // Enemy spawn positions per level
-    // Types: 'patrol' (back and forth), 'chase' (follows player slowly)
+    // Enemy spawn positions per level - updated for 20x20 grid
+    // Types: 'patrol' (back and forth), 'chase' (follows player UDLR)
     enemies: {
         real: {
             1: [
-                { x: 3, y: 3, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.0 },
-                { x: 5, y: 7, type: 'patrol', patrol: 'vertical', range: 2, speed: 1.0 }
+                { x: 6, y: 6, type: 'patrol', patrol: 'horizontal', range: 3, speed: 0.8 },
+                { x: 10, y: 10, type: 'patrol', patrol: 'vertical', range: 3, speed: 0.8 }
             ],
             2: [
-                { x: 4, y: 4, type: 'chase', speed: 0.5 },
-                { x: 7, y: 2, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.2 },
-                { x: 2, y: 6, type: 'patrol', patrol: 'vertical', range: 2, speed: 1.2 }
+                { x: 10, y: 10, type: 'chase', speed: 0.4 },
+                { x: 14, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.0 },
+                { x: 4, y: 12, type: 'patrol', patrol: 'vertical', range: 3, speed: 1.0 }
             ],
             3: [
-                { x: 4, y: 4, type: 'chase', speed: 0.6 },
-                { x: 6, y: 6, type: 'chase', speed: 0.5 },
-                { x: 2, y: 2, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 },
-                { x: 7, y: 7, type: 'patrol', patrol: 'vertical', range: 2, speed: 1.5 }
+                { x: 10, y: 8, type: 'chase', speed: 0.5 },
+                { x: 12, y: 12, type: 'chase', speed: 0.4 },
+                { x: 4, y: 4, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 14, y: 14, type: 'patrol', patrol: 'vertical', range: 4, speed: 1.2 }
             ]
         },
         dream: {
             1: [
-                { x: 10, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 },
-                { x: 20, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.5 }
+                { x: 20, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 40, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 }
             ],
             2: [
-                { x: 8, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.8 },
-                { x: 15, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 },
-                { x: 22, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 2.0 }
+                { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.4 },
+                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 }
             ],
             3: [
-                { x: 6, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 2.0 },
-                { x: 12, y: 2, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.8 },
-                { x: 18, y: 4, type: 'patrol', patrol: 'horizontal', range: 2, speed: 2.2 },
-                { x: 24, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 2.0 }
+                { x: 12, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 },
+                { x: 28, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4 },
+                { x: 45, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.8 },
+                { x: 62, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.6 }
             ]
         }
     }
@@ -212,10 +262,10 @@ function consumeKeyPress(code) {
 // ============================================
 
 const Player = {
-    x: 56,
-    y: 56,
-    width: 48,
-    height: 48,
+    x: 28,
+    y: 28,
+    width: 24,
+    height: 24,
     gridX: 2,
     gridY: 2,
     isMoving: false,
@@ -238,8 +288,8 @@ const Player = {
     init() {
         this.gridX = 2;
         this.gridY = 2;
-        this.x = this.gridX * TILE_SIZE + 4;
-        this.y = this.gridY * TILE_SIZE + 4;
+        this.x = this.gridX * TILE_SIZE + 2;
+        this.y = this.gridY * TILE_SIZE + 2;
         this.isMoving = false;
         this.isJumping = false;
         this.isFalling = false;
@@ -306,8 +356,8 @@ const Player = {
             if (this.moveProgress >= 1) {
                 this.finishMove();
             } else {
-                this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
-                this.y = this.startY + (this.targetGridY * TILE_SIZE + 4 - this.startY) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                this.y = this.startY + (this.targetGridY * TILE_SIZE + 2 - this.startY) * this.moveProgress;
             }
         } else {
             let dx = 0, dy = 0;
@@ -336,13 +386,13 @@ const Player = {
                 this.isJumping = false;
                 this.jumpPhase = 0;
                 this.gridY = this.targetGridY;
-                this.y = this.gridY * TILE_SIZE + 4;
+                this.y = this.gridY * TILE_SIZE + 2;
                 this.checkFalling(tiles);
             } else {
                 const jumpHeight = 2.5 * TILE_SIZE;
                 const arcHeight = jumpHeight * Math.sin(this.jumpPhase * Math.PI);
                 const startY = this.startY;
-                const endY = this.targetGridY * TILE_SIZE + 4;
+                const endY = this.targetGridY * TILE_SIZE + 2;
                 this.y = startY + (endY - startY) * this.jumpPhase - arcHeight;
             }
             return;
@@ -359,7 +409,7 @@ const Player = {
             const feetTileY = Math.floor((this.y + this.height) / TILE_SIZE);
             if (feetTileY < tiles.length && this.isSolid(this.gridX, feetTileY, tiles)) {
                 this.gridY = feetTileY - 1;
-                this.y = this.gridY * TILE_SIZE + 4;
+                this.y = this.gridY * TILE_SIZE + 2;
                 this.isFalling = false;
                 this.fallSpeed = 0;
             } else if (feetTileY >= tiles.length) {
@@ -375,12 +425,12 @@ const Player = {
             this.moveProgress += this.moveSpeed;
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
-                this.x = this.gridX * TILE_SIZE + 4;
+                this.x = this.gridX * TILE_SIZE + 2;
                 this.isMoving = false;
                 this.moveProgress = 0;
                 this.checkFalling(tiles);
             } else {
-                this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
             }
             return;
         }
@@ -421,11 +471,11 @@ const Player = {
             this.moveProgress += this.moveSpeed;
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
-                this.x = this.gridX * TILE_SIZE + 4;
+                this.x = this.gridX * TILE_SIZE + 2;
                 this.isMoving = false;
                 this.moveProgress = 0;
             } else {
-                this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
             }
         }
     },
@@ -511,8 +561,8 @@ const Player = {
     finishMove() {
         this.gridX = this.targetGridX;
         this.gridY = this.targetGridY;
-        this.x = this.gridX * TILE_SIZE + 4;
-        this.y = this.gridY * TILE_SIZE + 4;
+        this.x = this.gridX * TILE_SIZE + 2;
+        this.y = this.gridY * TILE_SIZE + 2;
         this.isMoving = false;
         this.moveProgress = 0;
     },
@@ -529,8 +579,8 @@ const Player = {
     respawnInDreamWorld() {
         this.gridX = 1;
         this.gridY = 1;
-        this.x = this.gridX * TILE_SIZE + 4;
-        this.y = this.gridY * TILE_SIZE + 4;
+        this.x = this.gridX * TILE_SIZE + 2;
+        this.y = this.gridY * TILE_SIZE + 2;
         this.isJumping = false;
         this.isFalling = false;
         this.isMoving = false;
@@ -584,49 +634,49 @@ const Player = {
         }
 
         const isAnimating = this.isMoving || this.isJumping;
-        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 3 : 0;
-        const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 5 : -5) : 0;
+        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 1.5 : 0;
+        const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 2 : -2) : 0;
 
-        // Legs (scaled down)
+        // Legs (scaled for 24px sprite)
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(6, 30 + bounce, 14, 14);
+        ctx.fillRect(3, 15 + bounce, 7, 7);
         ctx.fillStyle = shoeColor;
-        ctx.fillRect(3 - legOffset, 40 + bounce, 16, 7);
+        ctx.fillRect(1 - legOffset, 20 + bounce, 8, 4);
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(28, 30 + bounce, 14, 14);
+        ctx.fillRect(14, 15 + bounce, 7, 7);
         ctx.fillStyle = shoeColor;
-        ctx.fillRect(28 + legOffset, 40 + bounce, 16, 7);
+        ctx.fillRect(14 + legOffset, 20 + bounce, 8, 4);
 
         // Body
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(6, 14 + bounce, 36, 20);
+        ctx.fillRect(3, 7 + bounce, 18, 10);
 
         // Head
         ctx.fillStyle = skinColor;
         ctx.beginPath();
-        ctx.arc(24, 10 + bounce, 14, 0, Math.PI * 2);
+        ctx.arc(12, 5 + bounce, 7, 0, Math.PI * 2);
         ctx.fill();
 
         // Hair
         ctx.fillStyle = isReal ? '#2255aa' : '#cc3355';
         ctx.beginPath();
-        ctx.moveTo(10, 3 + bounce);
-        ctx.lineTo(17, -6 + bounce);
-        ctx.lineTo(24, 3 + bounce);
+        ctx.moveTo(5, 2 + bounce);
+        ctx.lineTo(8, -3 + bounce);
+        ctx.lineTo(12, 2 + bounce);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(24, 0 + bounce);
-        ctx.lineTo(34, -10 + bounce);
-        ctx.lineTo(34, 7 + bounce);
+        ctx.moveTo(12, 0 + bounce);
+        ctx.lineTo(17, -5 + bounce);
+        ctx.lineTo(17, 4 + bounce);
         ctx.fill();
 
         // Eyes
         ctx.fillStyle = '#fff';
-        ctx.fillRect(17, 5 + bounce, 6, 8);
-        ctx.fillRect(27, 5 + bounce, 6, 8);
+        ctx.fillRect(8, 3 + bounce, 3, 4);
+        ctx.fillRect(13, 3 + bounce, 3, 4);
         ctx.fillStyle = '#000';
-        ctx.fillRect(20, 7 + bounce, 3, 5);
-        ctx.fillRect(30, 7 + bounce, 3, 5);
+        ctx.fillRect(10, 4 + bounce, 2, 3);
+        ctx.fillRect(15, 4 + bounce, 2, 3);
 
         ctx.restore();
     }
@@ -644,17 +694,18 @@ function spawnEnemies() {
     if (enemyData) {
         enemyData.forEach(e => {
             GameState.enemies.push({
-                x: e.x * TILE_SIZE + 4,
-                y: e.y * TILE_SIZE + 4,
-                startX: e.x * TILE_SIZE + 4,
-                startY: e.y * TILE_SIZE + 4,
-                width: 42,
-                height: 42,
+                x: e.x * TILE_SIZE + 2,
+                y: e.y * TILE_SIZE + 2,
+                startX: e.x * TILE_SIZE + 2,
+                startY: e.y * TILE_SIZE + 2,
+                width: 22,
+                height: 22,
                 type: e.type || 'patrol',
                 patrol: e.patrol || 'horizontal',
                 range: (e.range || 2) * TILE_SIZE,
                 speed: e.speed || 1.0,
                 direction: 1,
+                chaseAxis: 'x', // For chase enemies: which axis to move on
                 world: world
             });
         });
@@ -672,13 +723,24 @@ function updateEnemies() {
         let nextY = enemy.y;
 
         if (enemy.type === 'chase') {
-            // Chase enemy - moves toward player slowly
+            // Chase enemy - moves toward player UDLR only (no diagonal)
             const dx = Player.x - enemy.x;
             const dy = Player.y - enemy.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > 10) { // Only move if not already on player
-                nextX = enemy.x + (dx / dist) * enemy.speed;
-                nextY = enemy.y + (dy / dist) * enemy.speed;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            if (absDx > 5 || absDy > 5) { // Only move if not already on player
+                // Move on one axis at a time - pick the one with greater distance
+                // Alternate axis when blocked to prevent getting stuck
+                if (enemy.chaseAxis === 'x' && absDx > 5) {
+                    nextX = enemy.x + Math.sign(dx) * enemy.speed;
+                } else if (absDy > 5) {
+                    nextY = enemy.y + Math.sign(dy) * enemy.speed;
+                    enemy.chaseAxis = 'y';
+                } else if (absDx > 5) {
+                    nextX = enemy.x + Math.sign(dx) * enemy.speed;
+                    enemy.chaseAxis = 'x';
+                }
             }
         } else if (enemy.patrol === 'horizontal') {
             nextX = enemy.x + enemy.speed * enemy.direction;
@@ -720,9 +782,21 @@ function updateEnemies() {
         }
 
         if (enemy.type === 'chase') {
-            // Chase enemies try to move in both axes independently
-            if (!blockedX) enemy.x = nextX;
-            if (!blockedY) enemy.y = nextY;
+            // Chase enemies move UDLR only - switch axis when blocked
+            if (nextX !== enemy.x) {
+                if (!blockedX) {
+                    enemy.x = nextX;
+                } else {
+                    enemy.chaseAxis = 'y'; // Switch to Y axis if X blocked
+                }
+            }
+            if (nextY !== enemy.y) {
+                if (!blockedY) {
+                    enemy.y = nextY;
+                } else {
+                    enemy.chaseAxis = 'x'; // Switch to X axis if Y blocked
+                }
+            }
         } else {
             // Patrol enemies reverse direction on collision
             const blocked = (enemy.patrol === 'horizontal') ? blockedX : blockedY;
@@ -766,51 +840,51 @@ function drawEnemies() {
 
         if (drawX < -enemy.width || drawX > GAME_WIDTH) return;
 
-        // Pac-Man style ghost - symmetrical dome with wavy bottom
+        // Pac-Man style ghost - symmetrical dome with wavy bottom (scaled for 22px)
         const isReal = GameState.currentWorld === 'real';
         const ghostColor = isReal ? '#ff4444' : '#cc44ff';
         const centerX = drawX + enemy.width / 2;
         const centerY = drawY + enemy.height / 2;
-        const radius = 18;
-        const waveTime = Date.now() * 0.01; // Animate wavy bottom
+        const radius = 9;
+        const waveTime = Date.now() * 0.01;
 
         // Ghost body - dome top
         ctx.fillStyle = ghostColor;
         ctx.beginPath();
-        ctx.arc(centerX, centerY - 4, radius, Math.PI, 0);
-        ctx.lineTo(centerX + radius, centerY + 12);
+        ctx.arc(centerX, centerY - 2, radius, Math.PI, 0);
+        ctx.lineTo(centerX + radius, centerY + 6);
 
-        // Wavy bottom - 4 symmetric waves
-        const waveCount = 4;
+        // Wavy bottom - 3 symmetric waves
+        const waveCount = 3;
         const waveWidth = (radius * 2) / waveCount;
         for (let i = 0; i < waveCount; i++) {
             const wx = centerX + radius - (i + 0.5) * waveWidth;
-            const waveOffset = Math.sin(waveTime + i) * 2;
-            const wy = centerY + 12 + (i % 2 === 0 ? 6 + waveOffset : waveOffset);
+            const waveOffset = Math.sin(waveTime + i) * 1;
+            const wy = centerY + 6 + (i % 2 === 0 ? 3 + waveOffset : waveOffset);
             ctx.lineTo(wx, wy);
         }
-        ctx.lineTo(centerX - radius, centerY + 12);
+        ctx.lineTo(centerX - radius, centerY + 6);
         ctx.closePath();
         ctx.fill();
 
         // Lighter inner highlight
         ctx.fillStyle = isReal ? '#ff7777' : '#dd77ff';
         ctx.beginPath();
-        ctx.arc(centerX - 5, centerY - 8, 6, 0, Math.PI * 2);
+        ctx.arc(centerX - 2, centerY - 4, 3, 0, Math.PI * 2);
         ctx.fill();
 
         // Eyes - symmetrical, centered, looking at player
-        const eyeOffsetX = 7;
-        const eyeY = centerY - 4;
-        const eyeRadius = 6;
-        const pupilRadius = 3;
+        const eyeOffsetX = 3;
+        const eyeY = centerY - 2;
+        const eyeRadius = 3;
+        const pupilRadius = 1.5;
 
         // Look toward player
         const toPlayerX = Player.x - enemy.x;
         const toPlayerY = Player.y - enemy.y;
         const dist = Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY) || 1;
-        const lookX = (toPlayerX / dist) * 2;
-        const lookY = (toPlayerY / dist) * 2;
+        const lookX = (toPlayerX / dist) * 1;
+        const lookY = (toPlayerY / dist) * 1;
 
         // White part of eyes
         ctx.fillStyle = '#fff';
@@ -872,21 +946,21 @@ function drawProjectiles() {
         const drawY = p.y + yOffset;
 
         if (p.isFireball) {
-            // Fireball (dream world)
+            // Fireball (dream world) - scaled down
             ctx.fillStyle = '#ff6600';
-            ctx.beginPath();
-            ctx.arc(drawX, drawY, 10, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffcc00';
             ctx.beginPath();
             ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
             ctx.fill();
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
         } else {
-            // Bullet (real world)
+            // Bullet (real world) - scaled down
             ctx.fillStyle = '#ffff00';
-            ctx.fillRect(drawX - 5, drawY - 2, 10, 5);
-            ctx.fillStyle = '#fff';
             ctx.fillRect(drawX - 3, drawY - 1, 6, 3);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(drawX - 2, drawY, 4, 2);
         }
     });
 }
@@ -918,52 +992,53 @@ const RealWorld = {
     },
 
     drawTile(tile, px, py) {
+        const s = TILE_SIZE / 56; // Scale factor for smaller tiles
         switch (tile) {
             case 1:
                 ctx.fillStyle = '#2a5530';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#3a7540';
-                ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                ctx.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
                 ctx.fillStyle = '#2a5530';
-                ctx.fillRect(px + TILE_SIZE/2 - 1, py, 2, TILE_SIZE);
-                ctx.fillRect(px, py + TILE_SIZE/2 - 1, TILE_SIZE, 2);
+                ctx.fillRect(px + TILE_SIZE/2, py, 1, TILE_SIZE);
+                ctx.fillRect(px, py + TILE_SIZE/2, TILE_SIZE, 1);
                 break;
             case 2:
                 ctx.fillStyle = '#9933ff';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#cc66ff';
-                const pulse = 12 + Math.sin(Date.now() / 200) * 6;
+                const pulse = 6*s + Math.sin(Date.now() / 200) * 3*s;
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 4, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 2*s, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 3:
                 ctx.fillStyle = '#654321';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#8B4513';
-                ctx.fillRect(px + 4, py + 2, TILE_SIZE - 8, TILE_SIZE - 4);
+                ctx.fillRect(px + 2, py + 1, TILE_SIZE - 4, TILE_SIZE - 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 8, 8, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 4*s, 4*s, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 4:
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + 20, 12, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + 10*s, 6*s, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(px + TILE_SIZE/2 - 4, py + 28, 8, 20);
-                ctx.fillRect(px + TILE_SIZE/2, py + 38, 12, 6);
+                ctx.fillRect(px + TILE_SIZE/2 - 2, py + 14*s, 4, 10*s);
+                ctx.fillRect(px + TILE_SIZE/2, py + 19*s, 6*s, 3*s);
                 break;
             case 5:
                 ctx.fillStyle = '#3a5530';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#1a3320';
-                ctx.fillRect(px + 12, py + 4, TILE_SIZE - 24, TILE_SIZE - 4);
+                ctx.fillRect(px + 6*s, py + 2, TILE_SIZE - 12*s, TILE_SIZE - 2);
                 break;
         }
     }
@@ -1023,65 +1098,66 @@ const DreamWorld = {
 
     drawTile(tile, px, py) {
         if (px < -TILE_SIZE || px > GAME_WIDTH) return;
+        const s = TILE_SIZE / 56; // Scale factor for smaller tiles
 
         switch (tile) {
             case 1:
                 ctx.fillStyle = '#5a3a7a';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#7a5a9a';
-                ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, 8);
+                ctx.fillRect(px + 1, py + 1, TILE_SIZE - 2, 4*s);
                 ctx.fillStyle = '#4a2a6a';
-                ctx.fillRect(px + 2, py + TILE_SIZE - 6, TILE_SIZE - 4, 4);
+                ctx.fillRect(px + 1, py + TILE_SIZE - 3*s, TILE_SIZE - 2, 2*s);
                 break;
             case 2:
                 ctx.fillStyle = '#33ff99';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#66ffbb';
-                const pulse = 12 + Math.sin(Date.now() / 200) * 6;
+                const pulse = 6*s + Math.sin(Date.now() / 200) * 3*s;
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 4, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 2*s, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 3:
                 ctx.fillStyle = '#654321';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#8B4513';
-                ctx.fillRect(px + 4, py + 2, TILE_SIZE - 8, TILE_SIZE - 4);
+                ctx.fillRect(px + 2, py + 1, TILE_SIZE - 4, TILE_SIZE - 2);
                 ctx.fillStyle = '#C0C0C0';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 8, 8, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 4*s, 4*s, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 4:
                 ctx.fillStyle = '#C0C0C0';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + 20, 12, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + 10*s, 6*s, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(px + TILE_SIZE/2 - 4, py + 28, 8, 20);
-                ctx.fillRect(px + TILE_SIZE/2, py + 38, 12, 6);
+                ctx.fillRect(px + TILE_SIZE/2 - 2, py + 14*s, 4, 10*s);
+                ctx.fillRect(px + TILE_SIZE/2, py + 19*s, 6*s, 3*s);
                 break;
             case 5:
                 ctx.fillStyle = '#4a3a2a';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#2a1a1a';
-                ctx.fillRect(px + 8, py + 4, TILE_SIZE - 16, TILE_SIZE - 4);
+                ctx.fillRect(px + 4*s, py + 2, TILE_SIZE - 8*s, TILE_SIZE - 2);
                 ctx.fillStyle = '#ffaa33';
                 ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 300) * 0.2;
-                ctx.fillRect(px + 12, py + 8, TILE_SIZE - 24, TILE_SIZE - 8);
+                ctx.fillRect(px + 6*s, py + 4*s, TILE_SIZE - 12*s, TILE_SIZE - 4*s);
                 ctx.globalAlpha = 1;
                 break;
             case 6:
                 ctx.fillStyle = '#ffd700';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#ffaa00';
-                ctx.fillRect(px + 6, py + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+                ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 10 + Math.sin(Date.now()/200)*3, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 5*s + Math.sin(Date.now()/200)*1.5*s, 0, Math.PI * 2);
                 ctx.fill();
                 break;
         }
@@ -1162,8 +1238,8 @@ function switchWorld() {
         GameState.currentWorld = 'dream';
         Player.gridX = 1;
         Player.gridY = 1;
-        Player.x = Player.gridX * TILE_SIZE + 4;
-        Player.y = Player.gridY * TILE_SIZE + 4;
+        Player.x = Player.gridX * TILE_SIZE + 2;
+        Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
         Player.isJumping = false;
         Player.isFalling = false;
@@ -1171,10 +1247,10 @@ function switchWorld() {
         GameState.cameraX = 0;
     } else {
         GameState.currentWorld = 'real';
-        Player.gridX = 6;
-        Player.gridY = 6;
-        Player.x = Player.gridX * TILE_SIZE + 4;
-        Player.y = Player.gridY * TILE_SIZE + 4;
+        Player.gridX = 12;
+        Player.gridY = 12;
+        Player.x = Player.gridX * TILE_SIZE + 2;
+        Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
         Player.moveProgress = 0;
     }
@@ -1308,4 +1384,4 @@ spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v1.1 - Enemy AI & Levels! Arrows to move, X to shoot/fireball');
+console.log('Dreamworld v1.2 - Smaller Grid Update! 20x20 Real World, UDLR enemies. Arrows/WASD to move, X to shoot');

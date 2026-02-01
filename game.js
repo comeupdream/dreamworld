@@ -1211,8 +1211,16 @@ const GameState = {
     coins: 0,           // Currency for shop
     shopSelection: 0,   // Current shop menu selection
     inShop: false,      // True when in shop screen
-    shieldHits: 0       // Remaining shield hits (multi-hit shields)
+    shieldHits: 0,      // Remaining shield hits (multi-hit shields)
+    // Title screen
+    titleSelection: 0,  // 0 = Start from Level 1, 1 = Start from Level 4
+    act1Complete: false // True after beating level 3 boss (persisted)
 };
+
+// Load act1 completion from localStorage
+try {
+    GameState.act1Complete = localStorage.getItem('dreamworld_act1') === 'true';
+} catch (e) {}
 
 // ============================================
 // INPUT HANDLING
@@ -1230,10 +1238,29 @@ const HOLD_THRESHOLD = 100; // ms before continuous movement activates
 document.addEventListener('keydown', (e) => {
     // Handle title screen input
     if (GameState.screenState === 'title') {
+        // Arrow keys to select option (only if act1 completed)
+        if (GameState.act1Complete) {
+            if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+                GameState.titleSelection = GameState.titleSelection === 0 ? 1 : 0;
+                Audio8Bit.init(); // Ensure audio is ready for sound
+                Audio8Bit.playPickup();
+                e.preventDefault();
+                return;
+            }
+        }
         if (e.code === 'Enter' || e.code === 'Space') {
             GameState.screenState = 'playing';
             Audio8Bit.init();
             Audio8Bit.startMusic();
+            // If starting from level 4, set up accordingly
+            if (GameState.titleSelection === 1 && GameState.act1Complete) {
+                Levels.loadLevel(4);
+                GameState.bossDefeated[3] = true; // Mark act 1 boss as done
+                GameState.coins = 200; // Give some starting coins
+                Player.init();
+                spawnEnemies();
+                updateUI();
+            }
             e.preventDefault();
         }
         return;
@@ -2545,6 +2572,12 @@ function damageBoss(damage) {
         GameState.score += 1000 * boss.level;
         GameState.coins += 100 * boss.level; // Big coin bonus from boss
         Audio8Bit.playPickup();
+
+        // Unlock act 2 after beating level 3 boss
+        if (boss.level === 3 && !GameState.act1Complete) {
+            GameState.act1Complete = true;
+            try { localStorage.setItem('dreamworld_act1', 'true'); } catch (e) {}
+        }
 
         // Big reward drops
         for (let i = 0; i < 5; i++) {
@@ -3908,6 +3941,9 @@ function switchWorld() {
 }
 
 function enterDoor() {
+    // Don't process if boss is already active
+    if (GameState.boss && GameState.boss.active) return;
+
     // Check if this is a boss level - same logic as reachGoal
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
         const bossTemplate = BossTemplates[Levels.current];
@@ -3926,6 +3962,9 @@ function enterDoor() {
 }
 
 function reachGoal() {
+    // Don't process if boss is already active
+    if (GameState.boss && GameState.boss.active) return;
+
     // Check if this is a boss level
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
         const bossTemplate = BossTemplates[Levels.current];
@@ -4465,41 +4504,63 @@ function drawTitleScreen() {
     ctx.textAlign = 'center';
     ctx.fillText('A Dual-Perspective Adventure', GAME_WIDTH / 2, startY + 70);
 
-    // Start button
-    const btnY = 320;
-    const btnWidth = 160;
-    const btnHeight = 45;
+    // Menu options
+    const options = GameState.act1Complete
+        ? ['START LEVEL 1', 'START LEVEL 4']
+        : ['START GAME'];
+
+    const btnWidth = 180;
+    const btnHeight = 40;
     const btnX = (GAME_WIDTH - btnWidth) / 2;
+    const startBtnY = GameState.act1Complete ? 300 : 320;
 
-    // Button glow
-    const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
-    ctx.shadowColor = '#ff69b4';
-    ctx.shadowBlur = 20 * glowIntensity;
+    for (let i = 0; i < options.length; i++) {
+        const btnY = startBtnY + i * 50;
+        const isSelected = GameState.titleSelection === i;
 
-    // Button background
-    ctx.fillStyle = '#9932cc';
-    ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
+        // Button glow for selected
+        if (isSelected) {
+            const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
+            ctx.shadowColor = '#ff69b4';
+            ctx.shadowBlur = 20 * glowIntensity;
+        }
 
-    // Button border (Tetris style)
-    ctx.fillStyle = '#ff69b4';
-    ctx.fillRect(btnX, btnY, btnWidth, 3);
-    ctx.fillRect(btnX, btnY, 3, btnHeight);
-    ctx.fillStyle = '#4a1070';
-    ctx.fillRect(btnX, btnY + btnHeight - 3, btnWidth, 3);
-    ctx.fillRect(btnX + btnWidth - 3, btnY, 3, btnHeight);
+        // Button background
+        ctx.fillStyle = isSelected ? '#9932cc' : '#4a1070';
+        ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
 
-    ctx.shadowBlur = 0;
+        // Button border
+        ctx.fillStyle = isSelected ? '#ff69b4' : '#6a3090';
+        ctx.fillRect(btnX, btnY, btnWidth, 3);
+        ctx.fillRect(btnX, btnY, 3, btnHeight);
+        ctx.fillStyle = isSelected ? '#4a1070' : '#2a0040';
+        ctx.fillRect(btnX, btnY + btnHeight - 3, btnWidth, 3);
+        ctx.fillRect(btnX + btnWidth - 3, btnY, 3, btnHeight);
 
-    // Button text
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 20px Courier New';
-    ctx.fillText('START GAME', GAME_WIDTH / 2, btnY + 30);
+        ctx.shadowBlur = 0;
+
+        // Button text
+        ctx.fillStyle = isSelected ? '#fff' : '#999';
+        ctx.font = 'bold 18px Courier New';
+        ctx.fillText(options[i], GAME_WIDTH / 2, btnY + 26);
+
+        // Selection arrow
+        if (isSelected && GameState.act1Complete) {
+            ctx.fillStyle = '#ff69b4';
+            ctx.fillText('>', btnX - 20, btnY + 26);
+        }
+    }
 
     // Controls hint
+    const hintY = GameState.act1Complete ? 420 : 400;
     ctx.fillStyle = '#888';
     ctx.font = '12px Courier New';
-    ctx.fillText('Press ENTER or SPACE to start', GAME_WIDTH / 2, 400);
-    ctx.fillText('ESC to pause during game', GAME_WIDTH / 2, 420);
+    if (GameState.act1Complete) {
+        ctx.fillText('Use UP/DOWN to select, ENTER to start', GAME_WIDTH / 2, hintY);
+    } else {
+        ctx.fillText('Press ENTER or SPACE to start', GAME_WIDTH / 2, hintY);
+    }
+    ctx.fillText('ESC to pause during game', GAME_WIDTH / 2, hintY + 20);
 
     // Controls info
     ctx.fillStyle = '#666';
@@ -4753,6 +4814,7 @@ function resetToTitle() {
     GameState.currentWorld = 'real';
     GameState.cameraX = 0;
     GameState.screenState = 'title';
+    GameState.titleSelection = 0;
     Levels.loadLevel(1);
     Player.init();
     spawnEnemies();

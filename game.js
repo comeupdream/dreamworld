@@ -1,9 +1,11 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.4 - 8-Bit Audio Update
-// - Procedural chiptune music track
-// - Laser pew pew sounds
-// - Hit, pickup, damage, portal SFX
+// v1.5 - Combat & UI Update
+// - Melee attack (C key) with swing animation
+// - Charged shots (hold X to charge)
+// - Tap-to-move single tile, hold for continuous
+// - Title screen with Tetris block logo
+// - Pause menu (ESC key)
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
@@ -155,6 +157,29 @@ const Audio8Bit = {
 
         osc.start(this.ctx.currentTime);
         osc.stop(this.ctx.currentTime + 0.3);
+    },
+
+    // Melee swing sound
+    playMelee() {
+        if (!this.ctx) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        // Quick swoosh sound
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.12);
     },
 
     // Portal/teleport sound
@@ -514,24 +539,20 @@ const Audio8Bit = {
     }
 };
 
-// Initialize audio on first user interaction
+// Initialize audio on first user interaction (music starts from title screen)
 document.addEventListener('click', () => {
     if (!Audio8Bit.ctx) {
         Audio8Bit.init();
-        Audio8Bit.startMusic();
     } else {
         Audio8Bit.resume();
-        if (!Audio8Bit.musicPlaying) Audio8Bit.startMusic();
     }
 }, { once: true });
 
 document.addEventListener('keydown', () => {
     if (!Audio8Bit.ctx) {
         Audio8Bit.init();
-        Audio8Bit.startMusic();
     } else {
         Audio8Bit.resume();
-        if (!Audio8Bit.musicPlaying) Audio8Bit.startMusic();
     }
 }, { once: true });
 
@@ -729,6 +750,7 @@ const Levels = {
 // ============================================
 
 const GameState = {
+    screenState: 'title', // 'title', 'playing', 'paused'
     currentWorld: 'real',
     inventory: [],
     keysPressed: {},
@@ -756,22 +778,132 @@ const GameState = {
 // INPUT HANDLING
 // ============================================
 
-const KeyState = { justPressed: {} };
+const KeyState = {
+    justPressed: {},
+    pressTime: {},      // When key was first pressed
+    movedOnce: {},      // Track if we did the initial tap move
+    continuousMove: {}  // Track if continuous movement is active
+};
+
+const HOLD_THRESHOLD = 100; // ms before continuous movement activates
 
 document.addEventListener('keydown', (e) => {
+    // Handle title screen input
+    if (GameState.screenState === 'title') {
+        if (e.code === 'Enter' || e.code === 'Space') {
+            GameState.screenState = 'playing';
+            Audio8Bit.init();
+            Audio8Bit.startMusic();
+            e.preventDefault();
+        }
+        return;
+    }
+
+    // Handle pause menu input
+    if (GameState.screenState === 'paused') {
+        if (e.code === 'Escape') {
+            GameState.screenState = 'playing';
+        } else if (e.code === 'ArrowUp') {
+            GameState.pauseSelection = (GameState.pauseSelection - 1 + 3) % 3;
+            Audio8Bit.playPickup();
+        } else if (e.code === 'ArrowDown') {
+            GameState.pauseSelection = (GameState.pauseSelection + 1) % 3;
+            Audio8Bit.playPickup();
+        } else if (e.code === 'Enter' || e.code === 'Space') {
+            handlePauseSelection();
+        }
+        e.preventDefault();
+        return;
+    }
+
+    // Toggle pause during gameplay
+    if (e.code === 'Escape' && GameState.screenState === 'playing') {
+        GameState.screenState = 'paused';
+        GameState.pauseSelection = 0;
+        e.preventDefault();
+        return;
+    }
+
+    // Normal gameplay input
     if (!GameState.keysPressed[e.code]) {
         KeyState.justPressed[e.code] = true;
+        KeyState.pressTime[e.code] = Date.now();
+        KeyState.movedOnce[e.code] = false;
+        KeyState.continuousMove[e.code] = false;
     }
     GameState.keysPressed[e.code] = true;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'Digit1', 'Digit2', 'Digit3', 'KeyZ'].includes(e.code)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'KeyC', 'Digit1', 'Digit2', 'Digit3', 'KeyZ', 'Escape'].includes(e.code)) {
         e.preventDefault();
     }
 });
 
+function handlePauseSelection() {
+    switch (GameState.pauseSelection) {
+        case 0: // Resume
+            GameState.screenState = 'playing';
+            break;
+        case 1: // Restart
+            restartGame();
+            GameState.screenState = 'playing';
+            break;
+        case 2: // Title screen
+            restartGame();
+            GameState.screenState = 'title';
+            Audio8Bit.stopMusic();
+            break;
+    }
+}
+
+function restartGame() {
+    Levels.loadLevel(1);
+    Player.init();
+    GameState.health = 3;
+    GameState.score = 0;
+    GameState.inventory = [];
+    GameState.usableItems = [];
+    GameState.dreamEssence = 0;
+    GameState.realEnergy = 0;
+    GameState.projectiles = [];
+    GameState.drops = [];
+    GameState.killedEnemies = { real: {}, dream: {} };
+    GameState.gameComplete = false;
+    GameState.powerBoostTimer = 0;
+    GameState.shieldTimer = 0;
+    spawnEnemies();
+    updateUI();
+}
+
 document.addEventListener('keyup', (e) => {
     GameState.keysPressed[e.code] = false;
     KeyState.justPressed[e.code] = false;
+    KeyState.pressTime[e.code] = 0;
+    KeyState.movedOnce[e.code] = false;
+    KeyState.continuousMove[e.code] = false;
 });
+
+// Check if key allows movement (either first tap or continuous after hold)
+function canMoveWithKey(code) {
+    if (!GameState.keysPressed[code]) return false;
+
+    const holdTime = Date.now() - (KeyState.pressTime[code] || 0);
+
+    // If we haven't moved once yet, allow the tap move
+    if (!KeyState.movedOnce[code]) {
+        return true;
+    }
+
+    // If held long enough, enable continuous movement
+    if (holdTime >= HOLD_THRESHOLD) {
+        KeyState.continuousMove[code] = true;
+    }
+
+    return KeyState.continuousMove[code];
+}
+
+// Mark that we did the initial tap move for this key
+function markKeyMoved(code) {
+    KeyState.movedOnce[code] = true;
+}
 
 function consumeKeyPress(code) {
     if (KeyState.justPressed[code]) {
@@ -808,6 +940,10 @@ const Player = {
     animFrame: 0,
     animTimer: 0,
     shootCooldown: 0,
+    meleeCooldown: 0,
+    meleeActive: 0,      // Frames melee hitbox is active
+    chargeTime: 0,       // How long X has been held
+    isCharging: false,
 
     init() {
         this.gridX = 2;
@@ -820,12 +956,18 @@ const Player = {
         this.jumpPhase = 0;
         this.fallSpeed = 0;
         this.shootCooldown = 0;
+        this.meleeCooldown = 0;
+        this.meleeActive = 0;
+        this.chargeTime = 0;
+        this.isCharging = false;
     },
 
     update() {
         if (GameState.portalCooldown > 0) GameState.portalCooldown--;
         if (GameState.invincible > 0) GameState.invincible--;
         if (this.shootCooldown > 0) this.shootCooldown--;
+        if (this.meleeCooldown > 0) this.meleeCooldown--;
+        if (this.meleeActive > 0) this.meleeActive--;
         if (GameState.powerBoostTimer > 0) GameState.powerBoostTimer--;
         if (GameState.shieldTimer > 0) GameState.shieldTimer--;
 
@@ -836,9 +978,30 @@ const Player = {
             this.updateCamera();
         }
 
-        // Shooting - X key
-        if (consumeKeyPress('KeyX') && this.shootCooldown <= 0) {
-            this.shoot();
+        // Charged shooting - hold X key
+        if (GameState.keysPressed['KeyX']) {
+            this.chargeTime++;
+            if (this.chargeTime >= 10) { // Start showing charge after 10 frames
+                this.isCharging = true;
+            }
+        } else if (this.chargeTime > 0) {
+            // Released X - fire based on charge level
+            if (this.shootCooldown <= 0) {
+                const charged = this.chargeTime >= 45; // ~0.75 seconds for full charge
+                this.shoot(charged);
+            }
+            this.chargeTime = 0;
+            this.isCharging = false;
+        }
+
+        // Melee attack - C key
+        if (consumeKeyPress('KeyC') && this.meleeCooldown <= 0) {
+            this.melee();
+        }
+
+        // Check melee hits
+        if (this.meleeActive > 0) {
+            this.checkMeleeHits();
         }
 
         // Use items - 1, 2, 3 keys
@@ -857,7 +1020,7 @@ const Player = {
         }
     },
 
-    shoot() {
+    shoot(charged = false) {
         // Faster shooting with power boost
         this.shootCooldown = GameState.powerBoostTimer > 0 ? 10 : 20;
 
@@ -875,8 +1038,9 @@ const Player = {
             vx = this.facing;
         }
 
-        // Faster projectiles with power boost
-        const speed = GameState.powerBoostTimer > 0 ? 12 : 8;
+        // Faster projectiles with power boost, even faster when charged
+        let speed = GameState.powerBoostTimer > 0 ? 12 : 8;
+        if (charged) speed = 14;
 
         GameState.projectiles.push({
             x: this.x + this.width / 2,
@@ -884,12 +1048,83 @@ const Player = {
             vx: vx * speed,
             vy: vy * speed,
             isFireball: GameState.currentWorld === 'dream',
-            life: 60,
-            powered: GameState.powerBoostTimer > 0 // Track if this was a powered shot
+            life: charged ? 90 : 60,
+            powered: GameState.powerBoostTimer > 0,
+            charged: charged // Big charged shot
         });
 
         // Play laser sound
         Audio8Bit.playLaser(GameState.currentWorld === 'dream');
+    },
+
+    melee() {
+        this.meleeCooldown = 25; // Can attack every ~0.4 seconds
+        this.meleeActive = 10;   // Hitbox active for ~0.17 seconds
+        Audio8Bit.playMelee();
+    },
+
+    getMeleeRect() {
+        // Melee hitbox in front of player
+        const meleeRange = 20;
+        const meleeWidth = 18;
+        const meleeHeight = 20;
+
+        if (GameState.currentWorld === 'real') {
+            // Top-down: attack in facing direction
+            if (this.facingY === -1) {
+                return { x: this.x + 2, y: this.y - meleeRange, width: meleeWidth, height: meleeRange };
+            } else if (this.facingY === 1) {
+                return { x: this.x + 2, y: this.y + this.height, width: meleeWidth, height: meleeRange };
+            } else if (this.facing === -1) {
+                return { x: this.x - meleeRange, y: this.y + 2, width: meleeRange, height: meleeHeight };
+            } else {
+                return { x: this.x + this.width, y: this.y + 2, width: meleeRange, height: meleeHeight };
+            }
+        } else {
+            // Side scroller: attack left or right
+            if (this.facing === -1) {
+                return { x: this.x - meleeRange, y: this.y, width: meleeRange, height: this.height };
+            } else {
+                return { x: this.x + this.width, y: this.y, width: meleeRange, height: this.height };
+            }
+        }
+    },
+
+    checkMeleeHits() {
+        const meleeRect = this.getMeleeRect();
+        const worldKey = GameState.currentWorld === 'real' ? 'real' : 'dream';
+
+        for (let i = GameState.enemies.length - 1; i >= 0; i--) {
+            const enemy = GameState.enemies[i];
+            if (enemy.world !== GameState.currentWorld) continue;
+            if (enemy.meleeHit) continue; // Already hit by this swing
+
+            const enemyRect = { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height };
+
+            if (rectsOverlap(meleeRect, enemyRect)) {
+                // Mark as hit so we don't hit again this swing
+                enemy.meleeHit = true;
+
+                // Track kill
+                if (!GameState.killedEnemies[worldKey][Levels.current]) {
+                    GameState.killedEnemies[worldKey][Levels.current] = [];
+                }
+                if (!GameState.killedEnemies[worldKey][Levels.current].includes(enemy.templateIndex)) {
+                    GameState.killedEnemies[worldKey][Levels.current].push(enemy.templateIndex);
+                }
+
+                // Award points (melee bonus!)
+                const points = (enemy.type === 'chase' ? 150 : 100) + 50;
+                GameState.score += points;
+
+                // Spawn drop
+                spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
+
+                GameState.enemies.splice(i, 1);
+                Audio8Bit.playHit();
+                updateUI();
+            }
+        }
     },
 
     updateTopDown() {
@@ -903,13 +1138,27 @@ const Player = {
             }
         } else {
             let dx = 0, dy = 0;
-            if (GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) { dy = -1; this.facingY = -1; }
-            else if (GameState.keysPressed['ArrowDown'] || GameState.keysPressed['KeyS']) { dy = 1; this.facingY = 1; }
-            else if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) { dx = -1; this.facing = -1; this.facingY = 0; }
-            else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) { dx = 1; this.facing = 1; this.facingY = 0; }
+            let moveKey = null;
 
-            if (dx !== 0 || dy !== 0) {
-                this.tryMove(dx, dy, Levels.getReal());
+            // Check each direction with tap/hold logic
+            if (canMoveWithKey('ArrowUp') || canMoveWithKey('KeyW')) {
+                dy = -1; this.facingY = -1;
+                moveKey = GameState.keysPressed['ArrowUp'] ? 'ArrowUp' : 'KeyW';
+            } else if (canMoveWithKey('ArrowDown') || canMoveWithKey('KeyS')) {
+                dy = 1; this.facingY = 1;
+                moveKey = GameState.keysPressed['ArrowDown'] ? 'ArrowDown' : 'KeyS';
+            } else if (canMoveWithKey('ArrowLeft') || canMoveWithKey('KeyA')) {
+                dx = -1; this.facing = -1; this.facingY = 0;
+                moveKey = GameState.keysPressed['ArrowLeft'] ? 'ArrowLeft' : 'KeyA';
+            } else if (canMoveWithKey('ArrowRight') || canMoveWithKey('KeyD')) {
+                dx = 1; this.facing = 1; this.facingY = 0;
+                moveKey = GameState.keysPressed['ArrowRight'] ? 'ArrowRight' : 'KeyD';
+            }
+
+            if ((dx !== 0 || dy !== 0) && moveKey) {
+                if (this.tryMove(dx, dy, Levels.getReal())) {
+                    markKeyMoved(moveKey);
+                }
             }
         }
     },
@@ -984,13 +1233,20 @@ const Player = {
             return;
         }
 
-        // Input
-        if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
+        // Input with tap/hold logic
+        let moveKey = null;
+        if (canMoveWithKey('ArrowLeft') || canMoveWithKey('KeyA')) {
             this.facing = -1;
-            this.tryMoveSide(-1, tiles);
-        } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
+            moveKey = GameState.keysPressed['ArrowLeft'] ? 'ArrowLeft' : 'KeyA';
+            if (this.tryMoveSide(-1, tiles)) {
+                markKeyMoved(moveKey);
+            }
+        } else if (canMoveWithKey('ArrowRight') || canMoveWithKey('KeyD')) {
             this.facing = 1;
-            this.tryMoveSide(1, tiles);
+            moveKey = GameState.keysPressed['ArrowRight'] ? 'ArrowRight' : 'KeyD';
+            if (this.tryMoveSide(1, tiles)) {
+                markKeyMoved(moveKey);
+            }
         }
 
         if (consumeKeyPress('Space') || consumeKeyPress('ArrowUp') || consumeKeyPress('KeyW')) {
@@ -1038,7 +1294,7 @@ const Player = {
     tryMove(dx, dy, tiles) {
         const newX = this.gridX + dx;
         const newY = this.gridY + dy;
-        if (newY < 0 || newY >= tiles.length || newX < 0 || newX >= tiles[0].length) return;
+        if (newY < 0 || newY >= tiles.length || newX < 0 || newX >= tiles[0].length) return false;
         const tile = tiles[newY][newX];
         if (tile !== 1 && tile !== 3) {
             this.startX = this.x;
@@ -1047,21 +1303,24 @@ const Player = {
             this.targetGridY = newY;
             this.isMoving = true;
             this.moveProgress = 0;
+            return true;
         }
+        return false;
     },
 
     tryMoveSide(dx, tiles) {
         const newX = this.gridX + dx;
-        if (newX < 0 || newX >= tiles[0].length) return;
+        if (newX < 0 || newX >= tiles[0].length) return false;
 
         // Check collision at current Y position
         const tile = tiles[this.gridY][newX];
-        if (tile === 1 || tile === 3) return; // Blocked by wall or locked door
+        if (tile === 1 || tile === 3) return false; // Blocked by wall or locked door
 
         this.startX = this.x;
         this.targetGridX = newX;
         this.isMoving = true;
         this.moveProgress = 0;
+        return true;
     },
 
     tryMoveSideAir(dx, tiles) {
@@ -1232,6 +1491,69 @@ const Player = {
         ctx.fillRect(15, 4 + bounce, 2, 3);
 
         ctx.restore();
+
+        // Draw charge indicator
+        if (this.isCharging) {
+            const chargeLevel = Math.min(this.chargeTime / 45, 1);
+            const chargeRadius = 16 + chargeLevel * 8;
+
+            ctx.strokeStyle = chargeLevel >= 1 ? '#ffff00' : '#88aaff';
+            ctx.lineWidth = 2 + chargeLevel * 2;
+            ctx.globalAlpha = 0.5 + chargeLevel * 0.3;
+            ctx.beginPath();
+            ctx.arc(drawX + this.width / 2, drawY + this.height / 2, chargeRadius, 0, Math.PI * 2 * chargeLevel);
+            ctx.stroke();
+
+            // Sparkles when fully charged
+            if (chargeLevel >= 1) {
+                ctx.fillStyle = '#ffff00';
+                for (let i = 0; i < 4; i++) {
+                    const angle = Date.now() * 0.01 + i * Math.PI / 2;
+                    const sx = drawX + this.width / 2 + Math.cos(angle) * chargeRadius;
+                    const sy = drawY + this.height / 2 + Math.sin(angle) * chargeRadius;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // Draw melee swing
+        if (this.meleeActive > 0) {
+            const swingProgress = 1 - (this.meleeActive / 10);
+            ctx.strokeStyle = isReal ? '#88ccff' : '#ffaa88';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.8 - swingProgress * 0.6;
+
+            const meleeRect = this.getMeleeRect();
+            const mx = meleeRect.x - cameraOffset;
+            const my = meleeRect.y + yOffset;
+
+            // Draw arc/slash
+            ctx.beginPath();
+            if (isReal) {
+                // Top-down slash
+                if (this.facingY === -1) {
+                    ctx.arc(drawX + this.width / 2, drawY, 18, Math.PI + swingProgress * 0.5, Math.PI * 2 - swingProgress * 0.5);
+                } else if (this.facingY === 1) {
+                    ctx.arc(drawX + this.width / 2, drawY + this.height, 18, swingProgress * 0.5, Math.PI - swingProgress * 0.5);
+                } else if (this.facing === -1) {
+                    ctx.arc(drawX, drawY + this.height / 2, 18, Math.PI / 2 + swingProgress * 0.5, Math.PI * 1.5 - swingProgress * 0.5);
+                } else {
+                    ctx.arc(drawX + this.width, drawY + this.height / 2, 18, -Math.PI / 2 + swingProgress * 0.5, Math.PI / 2 - swingProgress * 0.5);
+                }
+            } else {
+                // Side scroller slash
+                if (this.facing === -1) {
+                    ctx.arc(drawX, drawY + this.height / 2, 18, Math.PI / 2 + swingProgress * 0.5, Math.PI * 1.5 - swingProgress * 0.5);
+                } else {
+                    ctx.arc(drawX + this.width, drawY + this.height / 2, 18, -Math.PI / 2 + swingProgress * 0.5, Math.PI / 2 - swingProgress * 0.5);
+                }
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
     }
 };
 
@@ -1764,21 +2086,59 @@ function drawProjectiles() {
         const drawY = p.y + yOffset;
 
         if (p.isFireball) {
-            // Fireball (dream world) - scaled down
-            ctx.fillStyle = '#ff6600';
-            ctx.beginPath();
-            ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#ffcc00';
-            ctx.beginPath();
-            ctx.arc(drawX, drawY, 2.5, 0, Math.PI * 2);
-            ctx.fill();
+            // Fireball (dream world)
+            if (p.charged) {
+                // Charged fireball - big and powerful
+                ctx.fillStyle = '#ff00ff';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff6600';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 9, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffcc00';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 2, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Normal fireball - scaled down
+                ctx.fillStyle = '#ff6600';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffcc00';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
         } else {
-            // Bullet (real world) - scaled down
-            ctx.fillStyle = '#ffff00';
-            ctx.fillRect(drawX - 3, drawY - 1, 6, 3);
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(drawX - 2, drawY, 4, 2);
+            // Bullet (real world)
+            if (p.charged) {
+                // Charged bullet - big plasma shot
+                ctx.fillStyle = '#00ffff';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Normal bullet - scaled down
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(drawX - 3, drawY - 1, 6, 3);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(drawX - 2, drawY, 4, 2);
+            }
         }
     });
 }
@@ -2244,6 +2604,14 @@ function update() {
 
 function draw() {
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Handle different screen states
+    if (GameState.screenState === 'title') {
+        drawTitleScreen();
+        return;
+    }
+
+    // Draw game world
     RealWorld.draw();
     drawDivider();
     DreamWorld.draw();
@@ -2253,6 +2621,12 @@ function draw() {
     drawProjectiles();
     Player.draw();
     drawPowerUpStatus();
+
+    // Pause overlay
+    if (GameState.screenState === 'paused') {
+        drawPauseMenu();
+        return;
+    }
 
     // Victory screen overlay
     if (GameState.gameComplete) {
@@ -2270,8 +2644,263 @@ function draw() {
     }
 }
 
+// ============================================
+// TITLE SCREEN & PAUSE MENU
+// ============================================
+
+// Tetris block pixel art letters for "DREAMWORLD"
+// Each letter is defined as a grid of blocks (5 wide x 7 tall)
+const TetrisLetters = {
+    D: [
+        [1,1,1,0,0],
+        [1,0,0,1,0],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,1,0],
+        [1,1,1,0,0]
+    ],
+    R: [
+        [1,1,1,1,0],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,0],
+        [1,0,1,0,0],
+        [1,0,0,1,0],
+        [1,0,0,0,1]
+    ],
+    E: [
+        [1,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,1]
+    ],
+    A: [
+        [0,0,1,0,0],
+        [0,1,0,1,0],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1]
+    ],
+    M: [
+        [1,0,0,0,1],
+        [1,1,0,1,1],
+        [1,0,1,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1]
+    ],
+    W: [
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,1,0,1],
+        [1,1,0,1,1],
+        [1,0,0,0,1]
+    ],
+    O: [
+        [0,1,1,1,0],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [0,1,1,1,0]
+    ],
+    L: [
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,1]
+    ]
+};
+
+// Colors for Tetris blocks - pink, purple, green rotation
+const TetrisColors = ['#ff69b4', '#9932cc', '#32cd32', '#ff1493', '#8a2be2', '#00fa9a'];
+
+function drawTetrisLetter(letter, startX, startY, blockSize, colorIndex) {
+    const grid = TetrisLetters[letter];
+    if (!grid) return;
+
+    for (let y = 0; y < grid.length; y++) {
+        for (let x = 0; x < grid[y].length; x++) {
+            if (grid[y][x]) {
+                const bx = startX + x * blockSize;
+                const by = startY + y * blockSize;
+                const color = TetrisColors[(colorIndex + x + y) % TetrisColors.length];
+
+                // Block with Tetris-style 3D effect
+                ctx.fillStyle = color;
+                ctx.fillRect(bx, by, blockSize - 1, blockSize - 1);
+
+                // Highlight (top-left)
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillRect(bx, by, blockSize - 1, 2);
+                ctx.fillRect(bx, by, 2, blockSize - 1);
+
+                // Shadow (bottom-right)
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(bx, by + blockSize - 3, blockSize - 1, 2);
+                ctx.fillRect(bx + blockSize - 3, by, 2, blockSize - 1);
+            }
+        }
+    }
+}
+
+function drawTitleScreen() {
+    // Background - dark gradient with stars
+    const gradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+    gradient.addColorStop(0, '#0a0015');
+    gradient.addColorStop(0.5, '#1a0030');
+    gradient.addColorStop(1, '#0a0025');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Animated stars
+    const time = Date.now() / 1000;
+    for (let i = 0; i < 50; i++) {
+        const sx = (i * 137 + time * 10) % GAME_WIDTH;
+        const sy = (i * 97) % GAME_HEIGHT;
+        const twinkle = Math.sin(time * 3 + i) * 0.5 + 0.5;
+        ctx.fillStyle = `rgba(255,255,255,${0.3 + twinkle * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1 + twinkle, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Draw "DREAMWORLD" with Tetris blocks
+    const word = 'DREAMWORLD';
+    const blockSize = 6;
+    const letterWidth = 5 * blockSize + 4; // 5 blocks + spacing
+    const totalWidth = word.length * letterWidth;
+    const startX = (GAME_WIDTH - totalWidth) / 2;
+    const startY = 150;
+
+    // Floating animation
+    const floatOffset = Math.sin(time * 2) * 5;
+
+    for (let i = 0; i < word.length; i++) {
+        const letterOffset = Math.sin(time * 3 + i * 0.5) * 3;
+        drawTetrisLetter(
+            word[i],
+            startX + i * letterWidth,
+            startY + floatOffset + letterOffset,
+            blockSize,
+            i
+        );
+    }
+
+    // Subtitle
+    ctx.fillStyle = '#cc99ff';
+    ctx.font = 'bold 16px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('A Dual-Perspective Adventure', GAME_WIDTH / 2, startY + 70);
+
+    // Start button
+    const btnY = 320;
+    const btnWidth = 160;
+    const btnHeight = 45;
+    const btnX = (GAME_WIDTH - btnWidth) / 2;
+
+    // Button glow
+    const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
+    ctx.shadowColor = '#ff69b4';
+    ctx.shadowBlur = 20 * glowIntensity;
+
+    // Button background
+    ctx.fillStyle = '#9932cc';
+    ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
+
+    // Button border (Tetris style)
+    ctx.fillStyle = '#ff69b4';
+    ctx.fillRect(btnX, btnY, btnWidth, 3);
+    ctx.fillRect(btnX, btnY, 3, btnHeight);
+    ctx.fillStyle = '#4a1070';
+    ctx.fillRect(btnX, btnY + btnHeight - 3, btnWidth, 3);
+    ctx.fillRect(btnX + btnWidth - 3, btnY, 3, btnHeight);
+
+    ctx.shadowBlur = 0;
+
+    // Button text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px Courier New';
+    ctx.fillText('START GAME', GAME_WIDTH / 2, btnY + 30);
+
+    // Controls hint
+    ctx.fillStyle = '#888';
+    ctx.font = '12px Courier New';
+    ctx.fillText('Press ENTER or SPACE to start', GAME_WIDTH / 2, 400);
+    ctx.fillText('ESC to pause during game', GAME_WIDTH / 2, 420);
+
+    // Controls info
+    ctx.fillStyle = '#666';
+    ctx.font = '11px Courier New';
+    ctx.fillText('Arrow Keys: Move | X: Shoot (hold to charge) | C: Melee', GAME_WIDTH / 2, 480);
+    ctx.fillText('Z: World Power | 1-3: Use Items | E: Enter Doors', GAME_WIDTH / 2, 500);
+
+    ctx.textAlign = 'left';
+}
+
+function drawPauseMenu() {
+    // Darken game
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Pause title
+    ctx.fillStyle = '#ff69b4';
+    ctx.font = 'bold 36px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', GAME_WIDTH / 2, 200);
+
+    // Menu options
+    const menuY = 280;
+    const optionHeight = 50;
+    const options = ['RESUME', 'RESTART', 'TITLE SCREEN'];
+
+    const time = Date.now() / 1000;
+
+    options.forEach((option, i) => {
+        const y = menuY + i * optionHeight;
+        const isHovered = GameState.pauseSelection === i;
+
+        if (isHovered) {
+            // Highlighted option
+            ctx.fillStyle = '#9932cc';
+            ctx.fillRect(GAME_WIDTH / 2 - 100, y - 20, 200, 35);
+            ctx.fillStyle = '#fff';
+        } else {
+            ctx.fillStyle = '#aaa';
+        }
+
+        ctx.font = isHovered ? 'bold 18px Courier New' : '16px Courier New';
+        ctx.fillText(option, GAME_WIDTH / 2, y);
+    });
+
+    // Controls hint
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Courier New';
+    ctx.fillText('Arrow Keys to select, ENTER to confirm, ESC to resume', GAME_WIDTH / 2, 480);
+
+    ctx.textAlign = 'left';
+}
+
+// Initialize pause menu state
+GameState.pauseSelection = 0;
+
 function gameLoop() {
-    update();
+    if (GameState.screenState === 'playing') {
+        update();
+    }
     draw();
     requestAnimationFrame(gameLoop);
 }
@@ -2286,4 +2915,4 @@ spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v1.3 - Gameplay Systems Update! Score, item drops, world powers. X=shoot, Z=world power, 1-3=use items');
+console.log('Dreamworld v1.5 - Combat & UI Update! Melee (C), charged shots (hold X), title screen, pause (ESC)');

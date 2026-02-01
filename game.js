@@ -7,107 +7,124 @@ const ctx = canvas.getContext('2d');
 
 // Game dimensions
 const GAME_WIDTH = 640;
-const WORLD_HEIGHT = 256;
+const REAL_WORLD_HEIGHT = 320; // 10 tiles - SQUARE
+const DREAM_WORLD_HEIGHT = 192; // 6 tiles - shorter for sidescroller
 const DIVIDER_HEIGHT = 8;
-const GAME_HEIGHT = WORLD_HEIGHT * 2 + DIVIDER_HEIGHT;
+const GAME_HEIGHT = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT + DREAM_WORLD_HEIGHT;
 const TILE_SIZE = 32;
 
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
 
-const DREAM_WORLD_Y_OFFSET = WORLD_HEIGHT + DIVIDER_HEIGHT;
+const DREAM_WORLD_Y_OFFSET = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT;
 
 // ============================================
-// LEVELS
+// LEVEL DATA (templates - will be cloned)
+// ============================================
+
+const LevelTemplates = {
+    realWorld: {
+        // 10x10 square maps
+        1: [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1,4,0,1],
+            [1,0,0,0,0,0,1,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,1,1,0,1],
+            [1,0,0,0,0,0,1,2,0,1],
+            [1,0,0,0,0,0,1,0,3,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1],
+        ],
+        2: [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,1,0,0,0,0,4,1],
+            [1,0,0,1,0,0,1,0,0,1],
+            [1,0,0,0,0,0,1,0,0,1],
+            [1,1,0,0,1,0,0,0,0,1],
+            [1,0,0,0,1,0,0,1,0,1],
+            [1,0,0,0,0,0,0,1,2,1],
+            [1,0,1,1,0,0,0,1,0,1],
+            [1,0,0,0,0,0,0,0,3,1],
+            [1,1,1,1,1,1,1,1,1,1],
+        ],
+        3: [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,4,0,0,1,0,0,0,0,1],
+            [1,1,1,0,1,0,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,0,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,0,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,1,2,0,3,1],
+            [1,1,1,1,1,1,1,1,1,1],
+        ]
+    },
+    dreamWorld: {
+        // 6 tiles high, elongated horizontally (40+ tiles wide)
+        1: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,6],
+            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,3,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+        ],
+        2: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,1,6],
+            [0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,4,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,3,6],
+            [1,1,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1,1,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,1,6],
+        ],
+        3: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,1,6],
+            [0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,4,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,1,6],
+            [0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,3,6],
+            [1,1,1,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1,1,1,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,1,6],
+        ]
+    }
+};
+
+// ============================================
+// LEVELS - Active copies of templates
 // ============================================
 
 const Levels = {
     current: 1,
+    realWorld: null,
+    dreamWorld: null,
 
-    realWorld: {
-        1: [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,1,4,1,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,1,0,1,0,0,0,0,1,1,0,0,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,3,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        ],
-        2: [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,1,0,0,4,0,0,1,0,0,0,0,1,1,0,0,1],
-            [1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,2,0,3,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1],
-            [1,1,1,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        ],
-        3: [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,1],
-            [1,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,1,1,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0,3,2,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        ]
-    },
-
-    dreamWorld: {
-        1: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
-            [1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,6],
-            [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,0,0,6],
-            [0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,6],
-            [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,1,0,0,1,1,6],
-            [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,6],
-        ],
-        2: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
-            [1,1,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,1,6],
-            [0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,0,6],
-            [0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,4,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,0,3,6],
-            [1,1,1,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,0,1,1,6],
-            [1,1,1,1,1,1,0,0,0,1,1,0,0,0,1,1,0,0,1,1,0,0,0,1,1,0,0,0,0,0,1,1,0,1,1,0,1,1,1,6],
-        ],
-        3: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
-            [1,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,1,1,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,6],
-            [0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,4,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,3,6],
-            [1,1,0,0,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,1,0,0,1,1,6],
-            [1,1,1,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,0,0,0,0,1,1,1,1,1,0,1,1,1,6],
-        ]
+    loadLevel(num) {
+        this.current = num;
+        // Deep clone the level templates so we don't modify originals
+        this.realWorld = JSON.parse(JSON.stringify(LevelTemplates.realWorld[num]));
+        this.dreamWorld = JSON.parse(JSON.stringify(LevelTemplates.dreamWorld[num]));
     },
 
     getReal() {
-        return this.realWorld[this.current] || this.realWorld[1];
+        return this.realWorld;
     },
 
     getDream() {
-        return this.dreamWorld[this.current] || this.dreamWorld[1];
+        return this.dreamWorld;
     },
 
     nextLevel() {
-        this.current++;
-        if (this.current > 3) {
+        if (this.current >= 3) {
             return false; // Game complete
         }
+        this.loadLevel(this.current + 1);
         return true;
     },
 
     reset() {
-        this.current = 1;
+        this.loadLevel(1);
     }
 };
 
@@ -129,7 +146,14 @@ const GameState = {
 // INPUT HANDLING
 // ============================================
 
+const KeyState = {
+    justPressed: {}
+};
+
 document.addEventListener('keydown', (e) => {
+    if (!GameState.keysPressed[e.code]) {
+        KeyState.justPressed[e.code] = true;
+    }
     GameState.keysPressed[e.code] = true;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
         e.preventDefault();
@@ -138,7 +162,16 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('keyup', (e) => {
     GameState.keysPressed[e.code] = false;
+    KeyState.justPressed[e.code] = false;
 });
+
+function consumeKeyPress(code) {
+    if (KeyState.justPressed[code]) {
+        KeyState.justPressed[code] = false;
+        return true;
+    }
+    return false;
+}
 
 // ============================================
 // PLAYER
@@ -150,30 +183,26 @@ const Player = {
     width: 28,
     height: 28,
 
-    // Grid-based movement (used in BOTH worlds now)
+    // Grid position
     gridX: 2,
     gridY: 2,
+
+    // Movement state
     isMoving: false,
     moveProgress: 0,
-    moveSpeed: 0.18, // Speed of step animation
-    moveDirection: null,
-    targetX: 2,
-    targetY: 2,
+    moveSpeed: 0.12,
+    startX: 0,
+    startY: 0,
+    targetGridX: 0,
+    targetGridY: 0,
 
-    // Sidescroller additions
+    // Jump/Fall state for sidescroller
     isJumping: false,
-    jumpProgress: 0,
-    jumpStartY: 0,
-    jumpTargetY: 0,
-    jumpPeakHeight: 2.5, // Jump height in tiles
-    facing: 1,
-
-    // Falling
     isFalling: false,
-    fallStartY: 0,
-    fallProgress: 0,
+    jumpPhase: 0, // 0-1 for jump arc
+    fallSpeed: 0,
 
-    // Animation
+    facing: 1,
     animFrame: 0,
     animTimer: 0,
 
@@ -185,6 +214,8 @@ const Player = {
         this.isMoving = false;
         this.isJumping = false;
         this.isFalling = false;
+        this.jumpPhase = 0;
+        this.fallSpeed = 0;
     },
 
     update() {
@@ -201,7 +232,7 @@ const Player = {
 
         // Animation
         this.animTimer++;
-        if (this.animTimer > 8) {
+        if (this.animTimer > 10) {
             this.animTimer = 0;
             this.animFrame = (this.animFrame + 1) % 4;
         }
@@ -212,185 +243,251 @@ const Player = {
             this.moveProgress += this.moveSpeed;
 
             if (this.moveProgress >= 1) {
-                this.moveProgress = 0;
-                this.isMoving = false;
-                this.gridX = this.targetX;
-                this.gridY = this.targetY;
-                this.x = this.gridX * TILE_SIZE + 2;
-                this.y = this.gridY * TILE_SIZE + 2;
+                this.finishMove();
             } else {
-                const startX = this.gridX * TILE_SIZE + 2;
-                const startY = this.gridY * TILE_SIZE + 2;
-                const endX = this.targetX * TILE_SIZE + 2;
-                const endY = this.targetY * TILE_SIZE + 2;
-                this.x = startX + (endX - startX) * this.moveProgress;
-                this.y = startY + (endY - startY) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                this.y = this.startY + (this.targetGridY * TILE_SIZE + 2 - this.startY) * this.moveProgress;
             }
         } else {
+            // Check for input - allow holding keys for continuous stepping (like Pokemon)
             let dx = 0, dy = 0;
 
-            if (GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) {
-                dy = -1;
-                this.moveDirection = 'up';
-            } else if (GameState.keysPressed['ArrowDown'] || GameState.keysPressed['KeyS']) {
-                dy = 1;
-                this.moveDirection = 'down';
-            } else if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
-                dx = -1;
-                this.moveDirection = 'left';
-            } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
-                dx = 1;
-                this.moveDirection = 'right';
-            }
+            // Prioritize vertical vs horizontal (no diagonal movement)
+            if (GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) dy = -1;
+            else if (GameState.keysPressed['ArrowDown'] || GameState.keysPressed['KeyS']) dy = 1;
+            else if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) dx = -1;
+            else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) dx = 1;
 
             if (dx !== 0 || dy !== 0) {
-                const newGridX = this.gridX + dx;
-                const newGridY = this.gridY + dy;
-
-                if (this.canMoveToReal(newGridX, newGridY)) {
-                    this.targetX = newGridX;
-                    this.targetY = newGridY;
-                    this.isMoving = true;
-                    this.moveProgress = 0;
-                }
+                this.tryMove(dx, dy, Levels.getReal());
             }
         }
     },
 
     updateSideScroller() {
         const tiles = Levels.getDream();
+        const maxY = tiles.length - 1;
 
-        // Handle jumping
+        // Handle jumping (allows horizontal movement during jump)
         if (this.isJumping) {
-            this.jumpProgress += 0.08;
+            this.jumpPhase += 0.02; // Slow jump
 
-            if (this.jumpProgress >= 1) {
-                // Landing
-                this.isJumping = false;
-                this.jumpProgress = 0;
-                this.gridY = this.jumpTargetY;
-                this.y = this.gridY * TILE_SIZE + 2;
-
-                // Check if we need to fall further
-                this.checkFalling(tiles);
-            } else {
-                // Parabolic jump arc
-                const t = this.jumpProgress;
-                const arc = -4 * (t - 0.5) * (t - 0.5) + 1; // Peaks at 0.5
-                const startY = this.jumpStartY;
-                const endY = this.jumpTargetY * TILE_SIZE + 2;
-                const peakOffset = this.jumpPeakHeight * TILE_SIZE * arc;
-
-                this.y = startY + (endY - startY) * t - peakOffset;
+            // Allow horizontal movement during jump
+            if (!this.isMoving) {
+                if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
+                    this.facing = -1;
+                    this.tryMoveSideAir(-1, tiles);
+                } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
+                    this.facing = 1;
+                    this.tryMoveSideAir(1, tiles);
+                }
             }
-            return; // Can't move while jumping
-        }
 
-        // Handle falling
-        if (this.isFalling) {
-            this.fallProgress += 0.15;
+            // Process horizontal movement during jump
+            if (this.isMoving) {
+                this.moveProgress += this.moveSpeed;
+                if (this.moveProgress >= 1) {
+                    this.gridX = this.targetGridX;
+                    this.x = this.gridX * TILE_SIZE + 2;
+                    this.isMoving = false;
+                    this.moveProgress = 0;
+                } else {
+                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                }
+            }
 
-            if (this.fallProgress >= 1) {
-                this.isFalling = false;
-                this.fallProgress = 0;
-                this.gridY = this.targetY;
+            if (this.jumpPhase >= 1) {
+                // Jump complete - now fall
+                this.isJumping = false;
+                this.jumpPhase = 0;
+                this.gridY = this.targetGridY;
                 this.y = this.gridY * TILE_SIZE + 2;
-
-                // Check if we need to fall more
-                this.checkFalling(tiles);
+                this.startFalling(tiles);
             } else {
-                const startY = this.fallStartY;
-                const endY = this.targetY * TILE_SIZE + 2;
-                this.y = startY + (endY - startY) * this.fallProgress;
+                // Smooth jump arc
+                const jumpHeight = 2.5 * TILE_SIZE;
+                const t = this.jumpPhase;
+                // Parabolic arc: goes up then down
+                const arcHeight = jumpHeight * Math.sin(t * Math.PI);
+
+                const startY = this.startY;
+                const endY = this.targetGridY * TILE_SIZE + 2;
+
+                // Linear interpolation for Y position plus arc offset
+                this.y = startY + (endY - startY) * t - arcHeight;
             }
             return;
         }
 
-        // Handle horizontal movement
+        // Handle falling (allows horizontal movement during fall)
+        if (this.isFalling) {
+            this.fallSpeed += 0.008; // Gentle gravity
+            this.y += this.fallSpeed * TILE_SIZE;
+
+            // Allow horizontal movement during fall
+            if (!this.isMoving) {
+                if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
+                    this.facing = -1;
+                    this.tryMoveSideAir(-1, tiles);
+                } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
+                    this.facing = 1;
+                    this.tryMoveSideAir(1, tiles);
+                }
+            }
+
+            // Process horizontal movement during fall
+            if (this.isMoving) {
+                this.moveProgress += this.moveSpeed;
+                if (this.moveProgress >= 1) {
+                    this.gridX = this.targetGridX;
+                    this.x = this.gridX * TILE_SIZE + 2;
+                    this.isMoving = false;
+                    this.moveProgress = 0;
+                } else {
+                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
+                }
+            }
+
+            // Check if we've reached next tile down
+            const currentTileY = Math.floor((this.y + this.height) / TILE_SIZE);
+
+            if (currentTileY > this.gridY) {
+                // Check if there's ground at this new position
+                if (currentTileY < tiles.length && this.hasGround(this.gridX, currentTileY, tiles)) {
+                    // Land on this tile
+                    this.gridY = currentTileY - 1;
+                    this.y = this.gridY * TILE_SIZE + 2;
+                    this.isFalling = false;
+                    this.fallSpeed = 0;
+                } else if (currentTileY >= maxY) {
+                    // Fell off bottom
+                    this.respawnInDreamWorld();
+                } else {
+                    // Keep falling
+                    this.gridY = currentTileY;
+                }
+            }
+            return;
+        }
+
+        // Handle horizontal movement on ground
         if (this.isMoving) {
             this.moveProgress += this.moveSpeed;
 
             if (this.moveProgress >= 1) {
-                this.moveProgress = 0;
-                this.isMoving = false;
-                this.gridX = this.targetX;
+                this.gridX = this.targetGridX;
                 this.x = this.gridX * TILE_SIZE + 2;
+                this.isMoving = false;
+                this.moveProgress = 0;
 
                 // Check if we need to fall
-                this.checkFalling(tiles);
+                this.startFalling(tiles);
             } else {
-                const startX = this.gridX * TILE_SIZE + 2;
-                const endX = this.targetX * TILE_SIZE + 2;
-                this.x = startX + (endX - startX) * this.moveProgress;
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 2 - this.startX) * this.moveProgress;
             }
-            return; // Can't input while moving
+            return;
         }
 
-        // Check for ground beneath us first
-        this.checkFalling(tiles);
-        if (this.isFalling) return;
+        // Not moving - check for ground first
+        if (!this.hasGround(this.gridX, this.gridY + 1, tiles)) {
+            this.startFalling(tiles);
+            return;
+        }
 
-        // Process input - one step at a time
-        let dx = 0;
-
+        // Process input - allow holding keys for continuous movement
         if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
-            dx = -1;
             this.facing = -1;
+            this.tryMoveSide(-1, tiles);
         } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
-            dx = 1;
             this.facing = 1;
+            this.tryMoveSide(1, tiles);
         }
 
-        // Jump
-        if (GameState.keysPressed['Space'] || GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) {
+        // Jump requires a press (not hold) to prevent bunny hopping
+        if (consumeKeyPress('Space') || consumeKeyPress('ArrowUp') || consumeKeyPress('KeyW')) {
             this.tryJump(tiles);
-        }
-
-        // Horizontal movement
-        if (dx !== 0 && !this.isJumping) {
-            const newGridX = this.gridX + dx;
-
-            if (this.canMoveToDream(newGridX, this.gridY, tiles)) {
-                this.targetX = newGridX;
-                this.isMoving = true;
-                this.moveProgress = 0;
-            }
         }
     },
 
-    checkFalling(tiles) {
-        if (this.isJumping || this.isFalling) return;
+    hasGround(x, y, tiles) {
+        if (y < 0 || y >= tiles.length || x < 0 || x >= tiles[0].length) {
+            return false;
+        }
+        const tile = tiles[y][x];
+        return tile === 1 || tile === 6; // Platform or end wall
+    },
 
-        const belowY = this.gridY + 1;
+    startFalling(tiles) {
+        if (this.isFalling || this.isJumping) return;
 
-        // Check if there's ground below
-        if (belowY < tiles.length) {
-            const tileBelow = tiles[belowY][this.gridX];
-            if (tileBelow !== 1 && tileBelow !== 6) {
-                // No ground - fall
-                this.isFalling = true;
-                this.fallStartY = this.y;
-                this.fallProgress = 0;
-                this.targetY = belowY;
-            }
+        // Check if there's ground directly below
+        if (!this.hasGround(this.gridX, this.gridY + 1, tiles)) {
+            this.isFalling = true;
+            this.fallSpeed = 0.02;
+        }
+    },
+
+    tryMove(dx, dy, tiles) {
+        const newX = this.gridX + dx;
+        const newY = this.gridY + dy;
+
+        if (newY < 0 || newY >= tiles.length || newX < 0 || newX >= tiles[0].length) {
+            return;
         }
 
-        // Fell off bottom
-        if (this.gridY >= tiles.length - 1) {
-            this.respawnInDreamWorld();
+        const tile = tiles[newY][newX];
+        if (tile !== 1 && tile !== 3) {
+            this.startX = this.x;
+            this.startY = this.y;
+            this.targetGridX = newX;
+            this.targetGridY = newY;
+            this.isMoving = true;
+            this.moveProgress = 0;
+        }
+    },
+
+    tryMoveSide(dx, tiles) {
+        const newX = this.gridX + dx;
+
+        if (newX < 0 || newX >= tiles[0].length) return;
+
+        const tile = tiles[this.gridY][newX];
+        if (tile !== 1 && tile !== 3 && tile !== 6) {
+            this.startX = this.x;
+            this.targetGridX = newX;
+            this.isMoving = true;
+            this.moveProgress = 0;
+        }
+    },
+
+    tryMoveSideAir(dx, tiles) {
+        // Movement during jump/fall - check target horizontal position
+        const newX = this.gridX + dx;
+
+        if (newX < 0 || newX >= tiles[0].length) return;
+
+        // In the air, only check the current Y grid position for walls
+        const checkY = Math.max(0, Math.min(tiles.length - 1, this.gridY));
+        const tile = tiles[checkY][newX];
+        if (tile !== 1 && tile !== 6) {
+            this.startX = this.x;
+            this.targetGridX = newX;
+            this.isMoving = true;
+            this.moveProgress = 0;
         }
     },
 
     tryJump(tiles) {
         if (this.isJumping || this.isFalling) return;
 
-        // Find landing spot (2 tiles up, or highest reachable)
-        let targetY = this.gridY - 2;
+        // Must be on ground to jump
+        if (!this.hasGround(this.gridX, this.gridY + 1, tiles)) return;
 
-        // Can't jump above map
+        // Jump up 2 tiles (or less if blocked)
+        let targetY = this.gridY - 2;
         if (targetY < 0) targetY = 0;
 
-        // Check for ceiling collision
+        // Check for ceiling
         for (let y = this.gridY - 1; y >= targetY; y--) {
             if (y >= 0 && tiles[y] && tiles[y][this.gridX] === 1) {
                 targetY = y + 1;
@@ -400,49 +497,40 @@ const Player = {
 
         if (targetY < this.gridY) {
             this.isJumping = true;
-            this.jumpProgress = 0;
-            this.jumpStartY = this.y;
-            this.jumpTargetY = targetY;
+            this.jumpPhase = 0;
+            this.startY = this.y;
+            this.targetGridY = targetY;
         }
     },
 
-    canMoveToReal(tileX, tileY) {
-        const tiles = Levels.getReal();
-        if (tileY < 0 || tileY >= tiles.length ||
-            tileX < 0 || tileX >= tiles[0].length) {
-            return false;
-        }
-        const tile = tiles[tileY][tileX];
-        return tile !== 1 && tile !== 3;
-    },
-
-    canMoveToDream(tileX, tileY, tiles) {
-        if (tileY < 0 || tileY >= tiles.length ||
-            tileX < 0 || tileX >= tiles[0].length) {
-            return false;
-        }
-        const tile = tiles[tileY][tileX];
-        return tile !== 1 && tile !== 3 && tile !== 6;
+    finishMove() {
+        this.gridX = this.targetGridX;
+        this.gridY = this.targetGridY;
+        this.x = this.gridX * TILE_SIZE + 2;
+        this.y = this.gridY * TILE_SIZE + 2;
+        this.isMoving = false;
+        this.moveProgress = 0;
     },
 
     updateCamera() {
         const tiles = Levels.getDream();
         const mapWidth = tiles[0].length * TILE_SIZE;
         const targetCameraX = this.x - GAME_WIDTH / 3;
-        const maxCameraX = mapWidth - GAME_WIDTH;
+        const maxCameraX = Math.max(0, mapWidth - GAME_WIDTH);
 
-        GameState.cameraX += (targetCameraX - GameState.cameraX) * 0.1;
+        GameState.cameraX += (targetCameraX - GameState.cameraX) * 0.08;
         GameState.cameraX = Math.max(0, Math.min(maxCameraX, GameState.cameraX));
     },
 
     respawnInDreamWorld() {
         this.gridX = 1;
-        this.gridY = 2;
+        this.gridY = 1;
         this.x = this.gridX * TILE_SIZE + 2;
         this.y = this.gridY * TILE_SIZE + 2;
         this.isJumping = false;
         this.isFalling = false;
         this.isMoving = false;
+        this.fallSpeed = 0;
         GameState.cameraX = 0;
     },
 
@@ -451,8 +539,16 @@ const Player = {
     },
 
     draw() {
-        const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-        const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+        let yOffset, cameraOffset;
+
+        if (GameState.currentWorld === 'real') {
+            yOffset = 0;
+            cameraOffset = 0;
+        } else {
+            yOffset = DREAM_WORLD_Y_OFFSET;
+            cameraOffset = GameState.cameraX;
+        }
+
         const drawX = this.x - cameraOffset;
         const drawY = this.y + yOffset;
 
@@ -473,7 +569,7 @@ const Player = {
         }
 
         const isAnimating = this.isMoving || this.isJumping;
-        const bounce = isAnimating ? Math.sin(this.animTimer * 0.5) * 2 : 0;
+        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 2 : 0;
         const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 3 : -3) : 0;
 
         // Legs
@@ -531,7 +627,7 @@ const RealWorld = {
         const tiles = Levels.getReal();
 
         ctx.fillStyle = '#1a3320';
-        ctx.fillRect(0, 0, GAME_WIDTH, WORLD_HEIGHT);
+        ctx.fillRect(0, 0, GAME_WIDTH, REAL_WORLD_HEIGHT);
 
         for (let y = 0; y < tiles.length; y++) {
             for (let x = 0; x < tiles[y].length; x++) {
@@ -542,12 +638,13 @@ const RealWorld = {
             }
         }
 
+        // Label
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(5, 5, 130, 22);
+        ctx.fillRect(5, 5, 140, 22);
         ctx.fillStyle = '#90EE90';
         ctx.font = 'bold 14px Courier New';
         ctx.textAlign = 'left';
-        ctx.fillText(`REAL WORLD - L${Levels.current}`, 10, 20);
+        ctx.fillText(`REAL WORLD - Level ${Levels.current}`, 10, 20);
     },
 
     drawTile(tile, px, py) {
@@ -612,14 +709,14 @@ const DreamWorld = {
         gradient.addColorStop(0.5, '#1a0a2e');
         gradient.addColorStop(1, '#2a1a4a');
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, DREAM_WORLD_Y_OFFSET, GAME_WIDTH, WORLD_HEIGHT);
+        ctx.fillRect(0, DREAM_WORLD_Y_OFFSET, GAME_WIDTH, DREAM_WORLD_HEIGHT);
 
         // Stars
         ctx.fillStyle = '#ffffff';
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 40; i++) {
             const baseX = (i * 73) % (GAME_WIDTH * 2);
             const x = (baseX - GameState.cameraX * 0.3 + GAME_WIDTH) % GAME_WIDTH;
-            const y = DREAM_WORLD_Y_OFFSET + (i * 47) % (WORLD_HEIGHT - 60);
+            const y = DREAM_WORLD_Y_OFFSET + (i * 31) % (DREAM_WORLD_HEIGHT - 40);
             const twinkle = Math.sin(Date.now() * 0.005 + i) * 0.5 + 0.5;
             ctx.globalAlpha = twinkle * 0.8;
             ctx.fillRect(x, y, (i % 3) + 1, (i % 3) + 1);
@@ -638,20 +735,22 @@ const DreamWorld = {
             }
         }
 
+        // Label
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(5, DREAM_WORLD_Y_OFFSET + 5, 140, 22);
+        ctx.fillRect(5, DREAM_WORLD_Y_OFFSET + 5, 150, 22);
         ctx.fillStyle = '#DDA0DD';
         ctx.font = 'bold 14px Courier New';
         ctx.textAlign = 'left';
-        ctx.fillText(`DREAM WORLD - L${Levels.current}`, 10, DREAM_WORLD_Y_OFFSET + 20);
+        ctx.fillText(`DREAM WORLD - Level ${Levels.current}`, 10, DREAM_WORLD_Y_OFFSET + 20);
 
+        // Door prompt
         if (GameState.nearDoor && GameState.currentWorld === 'dream') {
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(GAME_WIDTH/2 - 80, DREAM_WORLD_Y_OFFSET + WORLD_HEIGHT - 40, 160, 30);
+            ctx.fillRect(GAME_WIDTH/2 - 80, DREAM_WORLD_Y_OFFSET + DREAM_WORLD_HEIGHT - 35, 160, 28);
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 14px Courier New';
             ctx.textAlign = 'center';
-            ctx.fillText('Press E to enter', GAME_WIDTH/2, DREAM_WORLD_Y_OFFSET + WORLD_HEIGHT - 20);
+            ctx.fillText('Press E to enter', GAME_WIDTH/2, DREAM_WORLD_Y_OFFSET + DREAM_WORLD_HEIGHT - 16);
         }
     },
 
@@ -716,7 +815,6 @@ const DreamWorld = {
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#ffaa00';
                 ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-                // Star
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 6 + Math.sin(Date.now()/200)*2, 0, Math.PI * 2);
@@ -785,13 +883,15 @@ function checkInteractions() {
                     if (tile === 5) {
                         GameState.nearDoor = { x: tileX, y: tileY };
                         if (GameState.keysPressed['KeyE']) {
-                            enterDoor();
                             GameState.keysPressed['KeyE'] = false;
+                            enterDoor();
+                            return;
                         }
                     }
 
                     if (tile === 6) {
                         reachGoal();
+                        return;
                     }
                 }
             }
@@ -812,7 +912,7 @@ function switchWorld() {
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';
         Player.gridX = 1;
-        Player.gridY = 2;
+        Player.gridY = 1;
         Player.x = Player.gridX * TILE_SIZE + 2;
         Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
@@ -822,10 +922,8 @@ function switchWorld() {
         GameState.cameraX = 0;
     } else {
         GameState.currentWorld = 'real';
-        Player.gridX = 13;
-        Player.gridY = 3;
-        Player.targetX = 13;
-        Player.targetY = 3;
+        Player.gridX = 6;
+        Player.gridY = 6;
         Player.x = Player.gridX * TILE_SIZE + 2;
         Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
@@ -844,19 +942,15 @@ function reachGoal() {
 
 function nextLevel() {
     if (Levels.nextLevel()) {
-        // More levels to go
+        console.log(`Advancing to Level ${Levels.current}`);
         GameState.currentWorld = 'real';
         GameState.inventory = [];
         GameState.cameraX = 0;
         Player.init();
         updateUI();
-        console.log(`Starting Level ${Levels.current}!`);
     } else {
-        // Game complete!
-        GameState.gameComplete = true;
         alert('Congratulations! You completed all 3 levels!');
         Levels.reset();
-        GameState.gameComplete = false;
         GameState.currentWorld = 'real';
         GameState.inventory = [];
         GameState.cameraX = 0;
@@ -871,13 +965,13 @@ function updateUI() {
     const hintsEl = document.getElementById('controls-hint');
 
     if (GameState.currentWorld === 'real') {
-        indicator.textContent = `REAL WORLD - Level ${Levels.current}`;
+        indicator.textContent = `REAL WORLD - L${Levels.current}`;
         indicator.className = 'real-world';
-        hintsEl.textContent = 'Arrow keys: step | Portal: switch world';
+        hintsEl.textContent = 'Arrows: step';
     } else {
-        indicator.textContent = `DREAM WORLD - Level ${Levels.current}`;
+        indicator.textContent = `DREAM WORLD - L${Levels.current}`;
         indicator.className = 'dream-world';
-        hintsEl.textContent = 'Arrows: step | Space: jump | E: enter door';
+        hintsEl.textContent = 'Arrows + Space | E: door';
     }
 
     inventoryEl.textContent = GameState.inventory.length > 0
@@ -887,19 +981,19 @@ function updateUI() {
 
 function drawDivider() {
     ctx.fillStyle = '#222';
-    ctx.fillRect(0, WORLD_HEIGHT, GAME_WIDTH, DIVIDER_HEIGHT);
+    ctx.fillRect(0, REAL_WORLD_HEIGHT, GAME_WIDTH, DIVIDER_HEIGHT);
 }
 
 function drawActiveHighlight() {
     ctx.strokeStyle = GameState.currentWorld === 'real' ? '#90EE90' : '#DDA0DD';
     ctx.lineWidth = 4;
-    ctx.shadowColor = GameState.currentWorld === 'real' ? '#90EE90' : '#DDA0DD';
+    ctx.shadowColor = ctx.strokeStyle;
     ctx.shadowBlur = 10;
 
     if (GameState.currentWorld === 'real') {
-        ctx.strokeRect(2, 2, GAME_WIDTH - 4, WORLD_HEIGHT - 4);
+        ctx.strokeRect(2, 2, GAME_WIDTH - 4, REAL_WORLD_HEIGHT - 4);
     } else {
-        ctx.strokeRect(2, DREAM_WORLD_Y_OFFSET + 2, GAME_WIDTH - 4, WORLD_HEIGHT - 4);
+        ctx.strokeRect(2, DREAM_WORLD_Y_OFFSET + 2, GAME_WIDTH - 4, DREAM_WORLD_HEIGHT - 4);
     }
     ctx.shadowBlur = 0;
 }
@@ -932,8 +1026,9 @@ function gameLoop() {
 // START
 // ============================================
 
+Levels.loadLevel(1);
 Player.init();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v0.4 - Grid-based movement + 3 Levels!');
+console.log('Dreamworld v0.6 - Air control during jump + continuous stepping');

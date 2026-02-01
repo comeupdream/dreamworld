@@ -3777,7 +3777,7 @@ function drawProjectiles() {
 const RealWorld = {
     draw() {
         const tiles = Levels.getReal();
-        ctx.fillStyle = '#1f1a14'; // Dark amber/brown background
+        ctx.fillStyle = '#1a0800'; // Dark orange-tinted background
         ctx.fillRect(0, 0, GAME_WIDTH, REAL_WORLD_HEIGHT);
 
         for (let y = 0; y < tiles.length; y++) {
@@ -3791,7 +3791,7 @@ const RealWorld = {
 
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(5, 5, 180, 22);
-        ctx.fillStyle = '#ffcc88'; // Warm amber text
+        ctx.fillStyle = '#ff9900'; // Bright orange text
         ctx.font = 'bold 14px Courier New';
         ctx.fillText(`REAL WORLD - X to shoot`, 10, 20);
     },
@@ -3800,12 +3800,12 @@ const RealWorld = {
         const s = TILE_SIZE / 56; // Scale factor for smaller tiles
         switch (tile) {
             case 1:
-                // Walls - warm orange/brown brick style
-                ctx.fillStyle = '#5a3018'; // Dark orange-brown outer
+                // Walls - bright OJ orange brick style!
+                ctx.fillStyle = '#cc4400'; // Deep orange outer
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#7a4528'; // Medium orange-brown inner
+                ctx.fillStyle = '#ff6600'; // Bright orange inner
                 ctx.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-                ctx.fillStyle = '#5a3018'; // Grid lines
+                ctx.fillStyle = '#cc4400'; // Grid lines
                 ctx.fillRect(px + TILE_SIZE/2, py, 1, TILE_SIZE);
                 ctx.fillRect(px, py + TILE_SIZE/2, TILE_SIZE, 1);
                 break;
@@ -3824,10 +3824,10 @@ const RealWorld = {
                 ctx.fill();
                 break;
             case 3:
-                // Locked door - darker wood tones
-                ctx.fillStyle = '#4a2810';
+                // Locked door - orange tones
+                ctx.fillStyle = '#994400';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#6a3820';
+                ctx.fillStyle = '#cc5500';
                 ctx.fillRect(px + 2, py + 1, TILE_SIZE - 4, TILE_SIZE - 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
@@ -3844,10 +3844,10 @@ const RealWorld = {
                 ctx.fillRect(px + TILE_SIZE/2, py + 19*s, 6*s, 3*s);
                 break;
             case 5:
-                // Open door - warm tones
-                ctx.fillStyle = '#4a3018';
+                // Open door - orange frame with dark opening
+                ctx.fillStyle = '#994400';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#1f1a14';
+                ctx.fillStyle = '#1a0800';
                 ctx.fillRect(px + 6*s, py + 2, TILE_SIZE - 12*s, TILE_SIZE - 2);
                 break;
         }

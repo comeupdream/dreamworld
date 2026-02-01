@@ -2166,8 +2166,23 @@ const Player = {
         const newY = this.gridY + dy;
         if (newY < 0 || newY >= tiles.length || newX < 0 || newX >= tiles[0].length) return false;
         const tile = tiles[newY][newX];
-        // Block: wall(1), locked goal(3), water(8), locked door(10)
-        if (tile !== 1 && tile !== 3 && tile !== 8 && tile !== 10) {
+
+        // Locked door (10) - try to unlock with Golden Key
+        if (tile === 10) {
+            if (GameState.inventory.includes('Golden Key')) {
+                tiles[newY][newX] = 7; // Unlock to regular room door
+                GameState.inventory.splice(GameState.inventory.indexOf('Golden Key'), 1);
+                Audio8Bit.playPickup();
+                showMessage('Door unlocked!', 90);
+                updateUI();
+            } else {
+                showMessage('Locked! Need a Golden Key', 60);
+            }
+            return false;
+        }
+
+        // Block: wall(1), locked goal(3), water(8)
+        if (tile !== 1 && tile !== 3 && tile !== 8) {
             this.startX = this.x;
             this.startY = this.y;
             this.targetGridX = newX;

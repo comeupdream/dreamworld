@@ -160,26 +160,118 @@ const Audio8Bit = {
     },
 
     // Melee swing sound
+    // Sword slice sound - sharp metallic whoosh
     playMelee() {
         if (!this.ctx) return;
         this.resume();
 
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
+        // High-pitched slice
+        const osc1 = this.ctx.createOscillator();
+        const gain1 = this.ctx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.connect(gain1);
+        gain1.connect(this.sfxGain);
+        osc1.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.15);
+        gain1.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc1.start(this.ctx.currentTime);
+        osc1.stop(this.ctx.currentTime + 0.15);
 
-        osc.type = 'sawtooth';
-        osc.connect(gain);
-        gain.connect(this.sfxGain);
+        // Metallic ring
+        const osc2 = this.ctx.createOscillator();
+        const gain2 = this.ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.connect(gain2);
+        gain2.connect(this.sfxGain);
+        osc2.frequency.setValueAtTime(1200, this.ctx.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.1);
+        gain2.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc2.start(this.ctx.currentTime);
+        osc2.stop(this.ctx.currentTime + 0.2);
 
-        // Quick swoosh sound
-        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+        // Noise swoosh
+        const bufferSize = this.ctx.sampleRate * 0.15;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        }
+        const noise = this.ctx.createBufferSource();
+        const noiseGain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        noise.buffer = buffer;
+        filter.type = 'highpass';
+        filter.frequency.value = 2000;
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.sfxGain);
+        noiseGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+        noise.start(this.ctx.currentTime);
+    },
 
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+    // Charging vortex sound
+    chargeSound: null,
+    chargeGain: null,
 
-        osc.start(this.ctx.currentTime);
-        osc.stop(this.ctx.currentTime + 0.12);
+    startChargeSound() {
+        if (!this.ctx) return;
+        if (this.chargeSound) return; // Already playing
+        this.resume();
+
+        // Create oscillators for vortex effect
+        this.chargeSound = [];
+        this.chargeGain = this.ctx.createGain();
+        this.chargeGain.connect(this.sfxGain);
+        this.chargeGain.gain.value = 0;
+
+        // Multiple detuned oscillators for wooshing
+        for (let i = 0; i < 3; i++) {
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = 150 + i * 50;
+            osc.detune.value = i * 10;
+            osc.connect(this.chargeGain);
+            osc.start();
+            this.chargeSound.push(osc);
+        }
+
+        // LFO for wobble
+        this.chargeLFO = this.ctx.createOscillator();
+        this.chargeLFO.frequency.value = 8;
+        const lfoGain = this.ctx.createGain();
+        lfoGain.gain.value = 30;
+        this.chargeLFO.connect(lfoGain);
+        this.chargeSound.forEach(osc => lfoGain.connect(osc.frequency));
+        this.chargeLFO.start();
+    },
+
+    updateChargeSound(chargeLevel) {
+        if (!this.chargeGain) return;
+        // Increase volume and pitch as charge builds
+        this.chargeGain.gain.value = Math.min(0.25, chargeLevel * 0.3);
+        if (this.chargeSound) {
+            this.chargeSound.forEach((osc, i) => {
+                osc.frequency.value = 150 + i * 50 + chargeLevel * 200;
+            });
+        }
+        if (this.chargeLFO) {
+            this.chargeLFO.frequency.value = 8 + chargeLevel * 12;
+        }
+    },
+
+    stopChargeSound() {
+        if (this.chargeSound) {
+            this.chargeSound.forEach(osc => osc.stop());
+            this.chargeSound = null;
+        }
+        if (this.chargeLFO) {
+            this.chargeLFO.stop();
+            this.chargeLFO = null;
+        }
+        this.chargeGain = null;
     },
 
     // Portal/teleport sound
@@ -1002,9 +1094,16 @@ const Player = {
             this.chargeTime++;
             if (this.chargeTime >= 10) { // Start showing charge after 10 frames
                 this.isCharging = true;
+                Audio8Bit.startChargeSound();
+            }
+            // Update charge sound intensity
+            if (this.isCharging) {
+                const chargeLevel = Math.min(this.chargeTime / 45, 1);
+                Audio8Bit.updateChargeSound(chargeLevel);
             }
         } else if (this.chargeTime > 0) {
             // Released X - fire based on charge level
+            Audio8Bit.stopChargeSound();
             if (this.shootCooldown <= 0) {
                 const charged = this.chargeTime >= 45; // ~0.75 seconds for full charge
                 this.shoot(charged);
@@ -1569,39 +1668,84 @@ const Player = {
             ctx.globalAlpha = 1;
         }
 
-        // Draw melee swing
+        // Draw sword slash effect
         if (this.meleeActive > 0) {
             const swingProgress = 1 - (this.meleeActive / 10);
-            ctx.strokeStyle = isReal ? '#88ccff' : '#ffaa88';
-            ctx.lineWidth = 3;
-            ctx.globalAlpha = 0.8 - swingProgress * 0.6;
+            const slashRadius = 22 + swingProgress * 8;
 
-            const meleeRect = this.getMeleeRect();
-            const mx = meleeRect.x - cameraOffset;
-            const my = meleeRect.y + yOffset;
-
-            // Draw arc/slash
-            ctx.beginPath();
+            // Determine slash position and angle based on facing
+            let slashX, slashY, startAngle, endAngle;
             if (isReal) {
-                // Top-down slash
                 if (this.facingY === -1) {
-                    ctx.arc(drawX + this.width / 2, drawY, 18, Math.PI + swingProgress * 0.5, Math.PI * 2 - swingProgress * 0.5);
+                    slashX = drawX + this.width / 2;
+                    slashY = drawY - 5;
+                    startAngle = Math.PI * 1.3 - swingProgress * 0.8;
+                    endAngle = Math.PI * 1.7 + swingProgress * 0.8;
                 } else if (this.facingY === 1) {
-                    ctx.arc(drawX + this.width / 2, drawY + this.height, 18, swingProgress * 0.5, Math.PI - swingProgress * 0.5);
+                    slashX = drawX + this.width / 2;
+                    slashY = drawY + this.height + 5;
+                    startAngle = -Math.PI * 0.3 - swingProgress * 0.8;
+                    endAngle = Math.PI * 0.3 + swingProgress * 0.8;
                 } else if (this.facing === -1) {
-                    ctx.arc(drawX, drawY + this.height / 2, 18, Math.PI / 2 + swingProgress * 0.5, Math.PI * 1.5 - swingProgress * 0.5);
+                    slashX = drawX - 5;
+                    slashY = drawY + this.height / 2;
+                    startAngle = Math.PI * 0.8 - swingProgress * 0.8;
+                    endAngle = Math.PI * 1.2 + swingProgress * 0.8;
                 } else {
-                    ctx.arc(drawX + this.width, drawY + this.height / 2, 18, -Math.PI / 2 + swingProgress * 0.5, Math.PI / 2 - swingProgress * 0.5);
+                    slashX = drawX + this.width + 5;
+                    slashY = drawY + this.height / 2;
+                    startAngle = -Math.PI * 0.2 - swingProgress * 0.8;
+                    endAngle = Math.PI * 0.2 + swingProgress * 0.8;
                 }
             } else {
-                // Side scroller slash
                 if (this.facing === -1) {
-                    ctx.arc(drawX, drawY + this.height / 2, 18, Math.PI / 2 + swingProgress * 0.5, Math.PI * 1.5 - swingProgress * 0.5);
+                    slashX = drawX - 5;
+                    slashY = drawY + this.height / 2;
+                    startAngle = Math.PI * 0.8 - swingProgress * 0.8;
+                    endAngle = Math.PI * 1.2 + swingProgress * 0.8;
                 } else {
-                    ctx.arc(drawX + this.width, drawY + this.height / 2, 18, -Math.PI / 2 + swingProgress * 0.5, Math.PI / 2 - swingProgress * 0.5);
+                    slashX = drawX + this.width + 5;
+                    slashY = drawY + this.height / 2;
+                    startAngle = -Math.PI * 0.2 - swingProgress * 0.8;
+                    endAngle = Math.PI * 0.2 + swingProgress * 0.8;
                 }
             }
+
+            // Slash trail (multiple layers for motion blur)
+            for (let i = 3; i >= 0; i--) {
+                const trailProgress = swingProgress - i * 0.08;
+                if (trailProgress < 0) continue;
+                const trailAlpha = (0.6 - swingProgress * 0.5) * (1 - i * 0.25);
+                const trailRadius = slashRadius - i * 2;
+
+                ctx.strokeStyle = isReal ? `rgba(136, 200, 255, ${trailAlpha})` : `rgba(255, 170, 136, ${trailAlpha})`;
+                ctx.lineWidth = 4 - i;
+                ctx.beginPath();
+                ctx.arc(slashX, slashY, trailRadius, startAngle + i * 0.1, endAngle - i * 0.1);
+                ctx.stroke();
+            }
+
+            // Main slash arc
+            ctx.strokeStyle = isReal ? '#ffffff' : '#ffddaa';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.9 - swingProgress * 0.7;
+            ctx.beginPath();
+            ctx.arc(slashX, slashY, slashRadius, startAngle, endAngle);
             ctx.stroke();
+
+            // Slash sparkles
+            if (swingProgress < 0.5) {
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < 3; i++) {
+                    const sparkAngle = startAngle + (endAngle - startAngle) * (i / 2);
+                    const sparkX = slashX + Math.cos(sparkAngle) * slashRadius;
+                    const sparkY = slashY + Math.sin(sparkAngle) * slashRadius;
+                    const sparkSize = 2 + Math.random() * 2;
+                    ctx.globalAlpha = 0.8 - swingProgress * 1.5;
+                    ctx.fillRect(sparkX - sparkSize/2, sparkY - sparkSize/2, sparkSize, sparkSize);
+                }
+            }
+
             ctx.globalAlpha = 1;
         }
     }

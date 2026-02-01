@@ -2488,8 +2488,8 @@ function drawEnemies() {
             highlightColor = '#2d2d44';
         } else {
             // Normal ghost
-            ghostColor = isReal ? '#ff4444' : '#cc44ff';
-            highlightColor = isReal ? '#ff7777' : '#dd77ff';
+            ghostColor = isReal ? '#4488ff' : '#cc44ff';
+            highlightColor = isReal ? '#77aaff' : '#dd77ff';
         }
 
         // Ghost body - dome top
@@ -3753,7 +3753,7 @@ function drawProjectiles() {
 const RealWorld = {
     draw() {
         const tiles = Levels.getReal();
-        ctx.fillStyle = '#1a3320';
+        ctx.fillStyle = '#1f1a14'; // Dark amber/brown background
         ctx.fillRect(0, 0, GAME_WIDTH, REAL_WORLD_HEIGHT);
 
         for (let y = 0; y < tiles.length; y++) {
@@ -3767,7 +3767,7 @@ const RealWorld = {
 
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(5, 5, 180, 22);
-        ctx.fillStyle = '#90EE90';
+        ctx.fillStyle = '#ffcc88'; // Warm amber text
         ctx.font = 'bold 14px Courier New';
         ctx.fillText(`REAL WORLD - X to shoot`, 10, 20);
     },
@@ -3776,15 +3776,17 @@ const RealWorld = {
         const s = TILE_SIZE / 56; // Scale factor for smaller tiles
         switch (tile) {
             case 1:
-                ctx.fillStyle = '#2a5530';
+                // Walls - warm orange/brown brick style
+                ctx.fillStyle = '#5a3018'; // Dark orange-brown outer
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#3a7540';
+                ctx.fillStyle = '#7a4528'; // Medium orange-brown inner
                 ctx.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-                ctx.fillStyle = '#2a5530';
+                ctx.fillStyle = '#5a3018'; // Grid lines
                 ctx.fillRect(px + TILE_SIZE/2, py, 1, TILE_SIZE);
                 ctx.fillRect(px, py + TILE_SIZE/2, TILE_SIZE, 1);
                 break;
             case 2:
+                // Portal - keep purple (connects worlds)
                 ctx.fillStyle = '#9933ff';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#cc66ff';
@@ -3798,9 +3800,10 @@ const RealWorld = {
                 ctx.fill();
                 break;
             case 3:
-                ctx.fillStyle = '#654321';
+                // Locked door - darker wood tones
+                ctx.fillStyle = '#4a2810';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#8B4513';
+                ctx.fillStyle = '#6a3820';
                 ctx.fillRect(px + 2, py + 1, TILE_SIZE - 4, TILE_SIZE - 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
@@ -3808,6 +3811,7 @@ const RealWorld = {
                 ctx.fill();
                 break;
             case 4:
+                // Key - keep gold
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + 10*s, 6*s, 0, Math.PI * 2);
@@ -3816,9 +3820,10 @@ const RealWorld = {
                 ctx.fillRect(px + TILE_SIZE/2, py + 19*s, 6*s, 3*s);
                 break;
             case 5:
-                ctx.fillStyle = '#3a5530';
+                // Open door - warm tones
+                ctx.fillStyle = '#4a3018';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#1a3320';
+                ctx.fillStyle = '#1f1a14';
                 ctx.fillRect(px + 6*s, py + 2, TILE_SIZE - 12*s, TILE_SIZE - 2);
                 break;
         }

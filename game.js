@@ -1,16 +1,17 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
+// v1.0 - Combat Update
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game dimensions - Real World is 10x10 SQUARE, Dream World same width
-const TILE_SIZE = 64; // Doubled from 32 for larger display
-const REAL_WORLD_TILES = 10; // 10x10 square like a chessboard
-const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 640px - matches square width
-const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 640px - square
-const DREAM_WORLD_HEIGHT = 6 * TILE_SIZE; // 384px - shorter for sidescroller
+// Game dimensions (scaled down ~12%)
+const TILE_SIZE = 56;
+const REAL_WORLD_TILES = 10;
+const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 560px
+const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 560px
+const DREAM_WORLD_HEIGHT = 6 * TILE_SIZE; // 336px
 const DIVIDER_HEIGHT = 8;
 const GAME_HEIGHT = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT + DREAM_WORLD_HEIGHT;
 
@@ -20,12 +21,11 @@ canvas.height = GAME_HEIGHT;
 const DREAM_WORLD_Y_OFFSET = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT;
 
 // ============================================
-// LEVEL DATA (templates - will be cloned)
+// LEVEL DATA - Just Level 1 for now
 // ============================================
 
 const LevelTemplates = {
     realWorld: {
-        // 10x10 square maps
         1: [
             [1,1,1,1,1,1,1,1,1,1],
             [1,0,0,0,0,0,1,4,0,1],
@@ -37,34 +37,9 @@ const LevelTemplates = {
             [1,0,0,0,0,0,1,0,3,1],
             [1,0,0,0,0,0,0,0,0,1],
             [1,1,1,1,1,1,1,1,1,1],
-        ],
-        2: [
-            [1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,1,0,0,0,0,4,1],
-            [1,0,0,1,0,0,1,0,0,1],
-            [1,0,0,0,0,0,1,0,0,1],
-            [1,1,0,0,1,0,0,0,0,1],
-            [1,0,0,0,1,0,0,1,0,1],
-            [1,0,0,0,0,0,0,1,2,1],
-            [1,0,1,1,0,0,0,1,0,1],
-            [1,0,0,0,0,0,0,0,3,1],
-            [1,1,1,1,1,1,1,1,1,1],
-        ],
-        3: [
-            [1,1,1,1,1,1,1,1,1,1],
-            [1,4,0,0,1,0,0,0,0,1],
-            [1,1,1,0,1,0,1,1,0,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,0,1,1,1,1,1,0,0,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,1,1,0,1,1,1,1,0,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,1,2,0,3,1],
-            [1,1,1,1,1,1,1,1,1,1],
         ]
     },
     dreamWorld: {
-        // 6 tiles high, elongated horizontally (40+ tiles wide)
         1: [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
@@ -72,28 +47,27 @@ const LevelTemplates = {
             [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,1,1,6],
             [0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,3,6],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
-        ],
-        2: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [1,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,1,6],
-            [0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,4,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,1,6],
-            [0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,1,0,3,6],
-            [1,1,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1,1,1,1,1,0,0,0,0,1,1,0,0,0,0,1,1,1,1,6],
-        ],
-        3: [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,1,6],
-            [0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,4,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,1,6],
-            [0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,3,6],
-            [1,1,1,1,1,1,1,0,0,0,0,0,1,1,0,0,0,1,1,1,1,1,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,1,6],
         ]
+    },
+    // Enemy spawn positions per level
+    enemies: {
+        real: {
+            1: [
+                { x: 3, y: 3, patrol: 'horizontal', range: 2 },
+                { x: 5, y: 7, patrol: 'vertical', range: 2 }
+            ]
+        },
+        dream: {
+            1: [
+                { x: 10, y: 4, patrol: 'horizontal', range: 3 },
+                { x: 20, y: 4, patrol: 'horizontal', range: 2 }
+            ]
+        }
     }
 };
 
 // ============================================
-// LEVELS - Active copies of templates
+// LEVELS
 // ============================================
 
 const Levels = {
@@ -103,30 +77,14 @@ const Levels = {
 
     loadLevel(num) {
         this.current = num;
-        // Deep clone the level templates so we don't modify originals
         this.realWorld = JSON.parse(JSON.stringify(LevelTemplates.realWorld[num]));
         this.dreamWorld = JSON.parse(JSON.stringify(LevelTemplates.dreamWorld[num]));
     },
 
-    getReal() {
-        return this.realWorld;
-    },
+    getReal() { return this.realWorld; },
+    getDream() { return this.dreamWorld; },
 
-    getDream() {
-        return this.dreamWorld;
-    },
-
-    nextLevel() {
-        if (this.current >= 3) {
-            return false; // Game complete
-        }
-        this.loadLevel(this.current + 1);
-        return true;
-    },
-
-    reset() {
-        this.loadLevel(1);
-    }
+    reset() { this.loadLevel(1); }
 };
 
 // ============================================
@@ -140,23 +98,25 @@ const GameState = {
     portalCooldown: 0,
     cameraX: 0,
     nearDoor: null,
-    gameComplete: false
+    health: 3,
+    maxHealth: 3,
+    invincible: 0, // Invincibility frames after hit
+    projectiles: [],
+    enemies: []
 };
 
 // ============================================
 // INPUT HANDLING
 // ============================================
 
-const KeyState = {
-    justPressed: {}
-};
+const KeyState = { justPressed: {} };
 
 document.addEventListener('keydown', (e) => {
     if (!GameState.keysPressed[e.code]) {
         KeyState.justPressed[e.code] = true;
     }
     GameState.keysPressed[e.code] = true;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX'].includes(e.code)) {
         e.preventDefault();
     }
 });
@@ -179,33 +139,28 @@ function consumeKeyPress(code) {
 // ============================================
 
 const Player = {
-    x: 64,
-    y: 64,
-    width: 56, // Doubled from 28
-    height: 56, // Doubled from 28
-
-    // Grid position
+    x: 56,
+    y: 56,
+    width: 48,
+    height: 48,
     gridX: 2,
     gridY: 2,
-
-    // Movement state
     isMoving: false,
     moveProgress: 0,
-    moveSpeed: 0.05, // Slow like Pokemon
+    moveSpeed: 0.08,
     startX: 0,
     startY: 0,
     targetGridX: 0,
     targetGridY: 0,
-
-    // Jump/Fall state for sidescroller
     isJumping: false,
     isFalling: false,
-    jumpPhase: 0, // 0-1 for jump arc
+    jumpPhase: 0,
     fallSpeed: 0,
-
     facing: 1,
+    facingY: 1, // For top-down shooting direction
     animFrame: 0,
     animTimer: 0,
+    shootCooldown: 0,
 
     init() {
         this.gridX = 2;
@@ -217,18 +172,24 @@ const Player = {
         this.isFalling = false;
         this.jumpPhase = 0;
         this.fallSpeed = 0;
+        this.shootCooldown = 0;
     },
 
     update() {
-        if (GameState.portalCooldown > 0) {
-            GameState.portalCooldown--;
-        }
+        if (GameState.portalCooldown > 0) GameState.portalCooldown--;
+        if (GameState.invincible > 0) GameState.invincible--;
+        if (this.shootCooldown > 0) this.shootCooldown--;
 
         if (GameState.currentWorld === 'real') {
             this.updateTopDown();
         } else {
             this.updateSideScroller();
             this.updateCamera();
+        }
+
+        // Shooting - X key
+        if (consumeKeyPress('KeyX') && this.shootCooldown <= 0) {
+            this.shoot();
         }
 
         // Animation
@@ -239,10 +200,36 @@ const Player = {
         }
     },
 
+    shoot() {
+        this.shootCooldown = 20;
+
+        let vx = 0, vy = 0;
+        if (GameState.currentWorld === 'real') {
+            // Shoot in last moved direction
+            if (this.facingY === -1) vy = -1;
+            else if (this.facingY === 1) vy = 1;
+            else if (this.facing === -1) vx = -1;
+            else vx = 1;
+            // Default to right if no direction
+            if (vx === 0 && vy === 0) vx = 1;
+        } else {
+            // Side scroller - shoot horizontally
+            vx = this.facing;
+        }
+
+        GameState.projectiles.push({
+            x: this.x + this.width / 2,
+            y: this.y + this.height / 2,
+            vx: vx * 8,
+            vy: vy * 8,
+            isFireball: GameState.currentWorld === 'dream',
+            life: 60
+        });
+    },
+
     updateTopDown() {
         if (this.isMoving) {
             this.moveProgress += this.moveSpeed;
-
             if (this.moveProgress >= 1) {
                 this.finishMove();
             } else {
@@ -250,14 +237,11 @@ const Player = {
                 this.y = this.startY + (this.targetGridY * TILE_SIZE + 4 - this.startY) * this.moveProgress;
             }
         } else {
-            // Check for input - allow holding keys for continuous stepping (like Pokemon)
             let dx = 0, dy = 0;
-
-            // Prioritize vertical vs horizontal (no diagonal movement)
-            if (GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) dy = -1;
-            else if (GameState.keysPressed['ArrowDown'] || GameState.keysPressed['KeyS']) dy = 1;
-            else if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) dx = -1;
-            else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) dx = 1;
+            if (GameState.keysPressed['ArrowUp'] || GameState.keysPressed['KeyW']) { dy = -1; this.facingY = -1; }
+            else if (GameState.keysPressed['ArrowDown'] || GameState.keysPressed['KeyS']) { dy = 1; this.facingY = 1; }
+            else if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) { dx = -1; this.facing = -1; this.facingY = 0; }
+            else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) { dx = 1; this.facing = 1; this.facingY = 0; }
 
             if (dx !== 0 || dy !== 0) {
                 this.tryMove(dx, dy, Levels.getReal());
@@ -267,134 +251,75 @@ const Player = {
 
     updateSideScroller() {
         const tiles = Levels.getDream();
-        const maxY = tiles.length - 1;
 
-        // Handle jumping (allows horizontal movement during jump)
+        // Jumping
         if (this.isJumping) {
-            this.jumpPhase += 0.02; // Slow jump
+            this.jumpPhase += 0.025;
 
-            // Allow horizontal movement during jump
-            if (!this.isMoving) {
-                if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
-                    this.facing = -1;
-                    this.tryMoveSideAir(-1, tiles);
-                } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
-                    this.facing = 1;
-                    this.tryMoveSideAir(1, tiles);
-                }
-            }
-
-            // Process horizontal movement during jump
-            if (this.isMoving) {
-                this.moveProgress += this.moveSpeed;
-                if (this.moveProgress >= 1) {
-                    this.gridX = this.targetGridX;
-                    this.x = this.gridX * TILE_SIZE + 4;
-                    this.isMoving = false;
-                    this.moveProgress = 0;
-                } else {
-                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
-                }
-            }
+            // Horizontal movement during jump
+            this.handleAirMovement(tiles);
 
             if (this.jumpPhase >= 1) {
-                // Jump complete - now fall
                 this.isJumping = false;
                 this.jumpPhase = 0;
                 this.gridY = this.targetGridY;
                 this.y = this.gridY * TILE_SIZE + 4;
-                this.startFalling(tiles);
+                this.checkFalling(tiles);
             } else {
-                // Smooth jump arc
                 const jumpHeight = 2.5 * TILE_SIZE;
-                const t = this.jumpPhase;
-                // Parabolic arc: goes up then down
-                const arcHeight = jumpHeight * Math.sin(t * Math.PI);
-
+                const arcHeight = jumpHeight * Math.sin(this.jumpPhase * Math.PI);
                 const startY = this.startY;
                 const endY = this.targetGridY * TILE_SIZE + 4;
-
-                // Linear interpolation for Y position plus arc offset
-                this.y = startY + (endY - startY) * t - arcHeight;
+                this.y = startY + (endY - startY) * this.jumpPhase - arcHeight;
             }
             return;
         }
 
-        // Handle falling (allows horizontal movement during fall)
+        // Falling
         if (this.isFalling) {
-            this.fallSpeed += 0.006; // Gentle gravity
+            this.fallSpeed += 0.008;
             this.y += this.fallSpeed * TILE_SIZE;
 
-            // Allow horizontal movement during fall
-            if (!this.isMoving) {
-                if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
-                    this.facing = -1;
-                    this.tryMoveSideAir(-1, tiles);
-                } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
-                    this.facing = 1;
-                    this.tryMoveSideAir(1, tiles);
-                }
-            }
+            this.handleAirMovement(tiles);
 
-            // Process horizontal movement during fall
-            if (this.isMoving) {
-                this.moveProgress += this.moveSpeed;
-                if (this.moveProgress >= 1) {
-                    this.gridX = this.targetGridX;
-                    this.x = this.gridX * TILE_SIZE + 4;
-                    this.isMoving = false;
-                    this.moveProgress = 0;
-                } else {
-                    this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
-                }
-            }
-
-            // Check landing - look at where player's feet are
-            const feetY = this.y + this.height;
-            const feetTileY = Math.floor(feetY / TILE_SIZE);
-
-            // Check if there's ground below us
-            if (feetTileY < tiles.length && this.hasGround(this.gridX, feetTileY, tiles)) {
-                // Land on top of this ground tile
+            // Check landing
+            const feetTileY = Math.floor((this.y + this.height) / TILE_SIZE);
+            if (feetTileY < tiles.length && this.isSolid(this.gridX, feetTileY, tiles)) {
                 this.gridY = feetTileY - 1;
                 this.y = this.gridY * TILE_SIZE + 4;
                 this.isFalling = false;
                 this.fallSpeed = 0;
             } else if (feetTileY >= tiles.length) {
-                // Fell off bottom
                 this.respawnInDreamWorld();
             } else {
-                // Update grid position while falling
                 this.gridY = Math.floor(this.y / TILE_SIZE);
             }
             return;
         }
 
-        // Handle horizontal movement on ground
+        // Ground movement
         if (this.isMoving) {
             this.moveProgress += this.moveSpeed;
-
             if (this.moveProgress >= 1) {
                 this.gridX = this.targetGridX;
                 this.x = this.gridX * TILE_SIZE + 4;
                 this.isMoving = false;
                 this.moveProgress = 0;
-
-                // Check if we need to fall
-                this.startFalling(tiles);
+                this.checkFalling(tiles);
             } else {
                 this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
             }
             return;
         }
 
-        // Not moving - check for ground first
-        if (!this.hasGround(this.gridX, this.gridY + 1, tiles)) {
-            this.startFalling(tiles);
+        // Check if we should fall
+        if (!this.isSolid(this.gridX, this.gridY + 1, tiles)) {
+            this.isFalling = true;
+            this.fallSpeed = 0.02;
             return;
         }
 
-        // Process input - allow holding keys for continuous movement
+        // Input
         if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
             this.facing = -1;
             this.tryMoveSide(-1, tiles);
@@ -403,25 +328,43 @@ const Player = {
             this.tryMoveSide(1, tiles);
         }
 
-        // Jump requires a press (not hold) to prevent bunny hopping
         if (consumeKeyPress('Space') || consumeKeyPress('ArrowUp') || consumeKeyPress('KeyW')) {
             this.tryJump(tiles);
         }
     },
 
-    hasGround(x, y, tiles) {
-        if (y < 0 || y >= tiles.length || x < 0 || x >= tiles[0].length) {
-            return false;
+    handleAirMovement(tiles) {
+        if (!this.isMoving) {
+            if (GameState.keysPressed['ArrowLeft'] || GameState.keysPressed['KeyA']) {
+                this.facing = -1;
+                this.tryMoveSideAir(-1, tiles);
+            } else if (GameState.keysPressed['ArrowRight'] || GameState.keysPressed['KeyD']) {
+                this.facing = 1;
+                this.tryMoveSideAir(1, tiles);
+            }
         }
-        const tile = tiles[y][x];
-        return tile === 1 || tile === 6; // Platform or end wall
+
+        if (this.isMoving) {
+            this.moveProgress += this.moveSpeed;
+            if (this.moveProgress >= 1) {
+                this.gridX = this.targetGridX;
+                this.x = this.gridX * TILE_SIZE + 4;
+                this.isMoving = false;
+                this.moveProgress = 0;
+            } else {
+                this.x = this.startX + (this.targetGridX * TILE_SIZE + 4 - this.startX) * this.moveProgress;
+            }
+        }
     },
 
-    startFalling(tiles) {
-        if (this.isFalling || this.isJumping) return;
+    isSolid(x, y, tiles) {
+        if (y < 0 || y >= tiles.length || x < 0 || x >= tiles[0].length) return false;
+        const tile = tiles[y][x];
+        return tile === 1 || tile === 6;
+    },
 
-        // Check if there's ground directly below
-        if (!this.hasGround(this.gridX, this.gridY + 1, tiles)) {
+    checkFalling(tiles) {
+        if (!this.isFalling && !this.isJumping && !this.isSolid(this.gridX, this.gridY + 1, tiles)) {
             this.isFalling = true;
             this.fallSpeed = 0.02;
         }
@@ -430,11 +373,7 @@ const Player = {
     tryMove(dx, dy, tiles) {
         const newX = this.gridX + dx;
         const newY = this.gridY + dy;
-
-        if (newY < 0 || newY >= tiles.length || newX < 0 || newX >= tiles[0].length) {
-            return;
-        }
-
+        if (newY < 0 || newY >= tiles.length || newX < 0 || newX >= tiles[0].length) return;
         const tile = tiles[newY][newX];
         if (tile !== 1 && tile !== 3) {
             this.startX = this.x;
@@ -448,48 +387,39 @@ const Player = {
 
     tryMoveSide(dx, tiles) {
         const newX = this.gridX + dx;
-
         if (newX < 0 || newX >= tiles[0].length) return;
 
+        // Check collision at current Y position
         const tile = tiles[this.gridY][newX];
-        // Allow moving into goal tile (6), but not into walls (1) or locked doors (3)
-        if (tile !== 1 && tile !== 3) {
-            this.startX = this.x;
-            this.targetGridX = newX;
-            this.isMoving = true;
-            this.moveProgress = 0;
-        }
+        if (tile === 1 || tile === 3) return; // Blocked by wall or locked door
+
+        this.startX = this.x;
+        this.targetGridX = newX;
+        this.isMoving = true;
+        this.moveProgress = 0;
     },
 
     tryMoveSideAir(dx, tiles) {
-        // Movement during jump/fall - check target horizontal position
         const newX = this.gridX + dx;
-
         if (newX < 0 || newX >= tiles[0].length) return;
 
-        // In the air, only check the current Y grid position for walls
+        // Check collision at current grid Y
         const checkY = Math.max(0, Math.min(tiles.length - 1, this.gridY));
-        const tile = tiles[checkY][newX];
-        // Only block on solid walls (1), allow everything else including goal (6)
-        if (tile !== 1) {
-            this.startX = this.x;
-            this.targetGridX = newX;
-            this.isMoving = true;
-            this.moveProgress = 0;
-        }
+        if (tiles[checkY][newX] === 1) return;
+
+        this.startX = this.x;
+        this.targetGridX = newX;
+        this.isMoving = true;
+        this.moveProgress = 0;
     },
 
     tryJump(tiles) {
         if (this.isJumping || this.isFalling) return;
+        if (!this.isSolid(this.gridX, this.gridY + 1, tiles)) return;
 
-        // Must be on ground to jump
-        if (!this.hasGround(this.gridX, this.gridY + 1, tiles)) return;
+        let targetY = Math.max(0, this.gridY - 2);
 
-        // Jump up 2 tiles (or less if blocked)
-        let targetY = this.gridY - 2;
-        if (targetY < 0) targetY = 0;
-
-        // Check for ceiling
+        // Check ceiling
         for (let y = this.gridY - 1; y >= targetY; y--) {
             if (y >= 0 && tiles[y] && tiles[y][this.gridX] === 1) {
                 targetY = y + 1;
@@ -519,7 +449,6 @@ const Player = {
         const mapWidth = tiles[0].length * TILE_SIZE;
         const targetCameraX = this.x - GAME_WIDTH / 3;
         const maxCameraX = Math.max(0, mapWidth - GAME_WIDTH);
-
         GameState.cameraX += (targetCameraX - GameState.cameraX) * 0.08;
         GameState.cameraX = Math.max(0, Math.min(maxCameraX, GameState.cameraX));
     },
@@ -536,25 +465,37 @@ const Player = {
         GameState.cameraX = 0;
     },
 
+    takeDamage() {
+        if (GameState.invincible > 0) return;
+        GameState.health--;
+        GameState.invincible = 60; // 1 second invincibility
+        if (GameState.health <= 0) {
+            // Reset level
+            GameState.health = GameState.maxHealth;
+            GameState.inventory = [];
+            Levels.loadLevel(Levels.current);
+            spawnEnemies();
+            this.init();
+            GameState.cameraX = 0;
+        }
+        updateUI();
+    },
+
     getRect() {
         return { x: this.x, y: this.y, width: this.width, height: this.height };
     },
 
     draw() {
-        let yOffset, cameraOffset;
-
-        if (GameState.currentWorld === 'real') {
-            yOffset = 0;
-            cameraOffset = 0;
-        } else {
-            yOffset = DREAM_WORLD_Y_OFFSET;
-            cameraOffset = GameState.cameraX;
-        }
+        let yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+        let cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
 
         const drawX = this.x - cameraOffset;
         const drawY = this.y + yOffset;
 
         if (drawX < -this.width || drawX > GAME_WIDTH) return;
+
+        // Flash when invincible
+        if (GameState.invincible > 0 && Math.floor(GameState.invincible / 4) % 2 === 0) return;
 
         const isReal = GameState.currentWorld === 'real';
         const bodyColor = isReal ? '#4488ff' : '#ff6688';
@@ -562,7 +503,6 @@ const Player = {
         const skinColor = '#ffcc99';
 
         ctx.save();
-
         if (!isReal && this.facing === -1) {
             ctx.translate(drawX + this.width, drawY);
             ctx.scale(-1, 1);
@@ -571,54 +511,213 @@ const Player = {
         }
 
         const isAnimating = this.isMoving || this.isJumping;
-        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 4 : 0;
-        const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 6 : -6) : 0;
+        const bounce = isAnimating ? Math.sin(this.animTimer * 0.4) * 3 : 0;
+        const legOffset = isAnimating ? (this.animFrame % 2 === 0 ? 5 : -5) : 0;
 
-        // Legs (all coords doubled)
+        // Legs (scaled down)
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(8, 36 + bounce, 16, 16);
+        ctx.fillRect(6, 30 + bounce, 14, 14);
         ctx.fillStyle = shoeColor;
-        ctx.fillRect(4 - legOffset, 48 + bounce, 20, 8);
-
+        ctx.fillRect(3 - legOffset, 40 + bounce, 16, 7);
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(32, 36 + bounce, 16, 16);
+        ctx.fillRect(28, 30 + bounce, 14, 14);
         ctx.fillStyle = shoeColor;
-        ctx.fillRect(32 + legOffset, 48 + bounce, 20, 8);
+        ctx.fillRect(28 + legOffset, 40 + bounce, 16, 7);
 
         // Body
         ctx.fillStyle = bodyColor;
-        ctx.fillRect(8, 16 + bounce, 40, 24);
+        ctx.fillRect(6, 14 + bounce, 36, 20);
 
         // Head
         ctx.fillStyle = skinColor;
         ctx.beginPath();
-        ctx.arc(28, 12 + bounce, 16, 0, Math.PI * 2);
+        ctx.arc(24, 10 + bounce, 14, 0, Math.PI * 2);
         ctx.fill();
 
-        // Hair/spikes
+        // Hair
         ctx.fillStyle = isReal ? '#2255aa' : '#cc3355';
         ctx.beginPath();
-        ctx.moveTo(12, 4 + bounce);
-        ctx.lineTo(20, -8 + bounce);
-        ctx.lineTo(28, 4 + bounce);
+        ctx.moveTo(10, 3 + bounce);
+        ctx.lineTo(17, -6 + bounce);
+        ctx.lineTo(24, 3 + bounce);
         ctx.fill();
         ctx.beginPath();
-        ctx.moveTo(28, 0 + bounce);
-        ctx.lineTo(40, -12 + bounce);
-        ctx.lineTo(40, 8 + bounce);
+        ctx.moveTo(24, 0 + bounce);
+        ctx.lineTo(34, -10 + bounce);
+        ctx.lineTo(34, 7 + bounce);
         ctx.fill();
 
         // Eyes
         ctx.fillStyle = '#fff';
-        ctx.fillRect(20, 6 + bounce, 8, 10);
-        ctx.fillRect(32, 6 + bounce, 8, 10);
+        ctx.fillRect(17, 5 + bounce, 6, 8);
+        ctx.fillRect(27, 5 + bounce, 6, 8);
         ctx.fillStyle = '#000';
-        ctx.fillRect(24, 8 + bounce, 4, 6);
-        ctx.fillRect(36, 8 + bounce, 4, 6);
+        ctx.fillRect(20, 7 + bounce, 3, 5);
+        ctx.fillRect(30, 7 + bounce, 3, 5);
 
         ctx.restore();
     }
 };
+
+// ============================================
+// ENEMIES
+// ============================================
+
+function spawnEnemies() {
+    GameState.enemies = [];
+    const world = GameState.currentWorld;
+    const enemyData = LevelTemplates.enemies[world === 'real' ? 'real' : 'dream'][Levels.current];
+
+    if (enemyData) {
+        enemyData.forEach(e => {
+            GameState.enemies.push({
+                x: e.x * TILE_SIZE + 4,
+                y: e.y * TILE_SIZE + 4,
+                startX: e.x * TILE_SIZE + 4,
+                startY: e.y * TILE_SIZE + 4,
+                width: 42,
+                height: 42,
+                patrol: e.patrol,
+                range: e.range * TILE_SIZE,
+                speed: 1.5,
+                direction: 1,
+                world: world
+            });
+        });
+    }
+}
+
+function updateEnemies() {
+    GameState.enemies.forEach(enemy => {
+        if (enemy.world !== GameState.currentWorld) return;
+
+        // Patrol movement
+        if (enemy.patrol === 'horizontal') {
+            enemy.x += enemy.speed * enemy.direction;
+            if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) {
+                enemy.direction *= -1;
+            }
+        } else if (enemy.patrol === 'vertical') {
+            enemy.y += enemy.speed * enemy.direction;
+            if (enemy.y > enemy.startY + enemy.range || enemy.y < enemy.startY - enemy.range) {
+                enemy.direction *= -1;
+            }
+        }
+
+        // Check collision with player
+        const playerRect = Player.getRect();
+        const enemyRect = { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height };
+        if (rectsOverlap(playerRect, enemyRect)) {
+            Player.takeDamage();
+        }
+    });
+}
+
+function drawEnemies() {
+    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+
+    GameState.enemies.forEach(enemy => {
+        if (enemy.world !== GameState.currentWorld) return;
+
+        const drawX = enemy.x - cameraOffset;
+        const drawY = enemy.y + yOffset;
+
+        if (drawX < -enemy.width || drawX > GAME_WIDTH) return;
+
+        // Draw enemy (ghost/slime shape - scaled)
+        const isReal = GameState.currentWorld === 'real';
+        ctx.fillStyle = isReal ? '#aa3333' : '#9933cc';
+
+        // Body
+        ctx.beginPath();
+        ctx.arc(drawX + enemy.width/2, drawY + enemy.height/2 - 6, 17, Math.PI, 0);
+        ctx.lineTo(drawX + enemy.width/2 + 17, drawY + enemy.height - 6);
+        // Wavy bottom
+        for (let i = 0; i < 4; i++) {
+            const wx = drawX + enemy.width/2 + 17 - i * 8.5;
+            const wy = drawY + enemy.height - 6 + (i % 2 === 0 ? 6 : 0);
+            ctx.lineTo(wx, wy);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(drawX + enemy.width/2 - 6, drawY + enemy.height/2 - 8, 5, 0, Math.PI * 2);
+        ctx.arc(drawX + enemy.width/2 + 6, drawY + enemy.height/2 - 8, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(drawX + enemy.width/2 - 4, drawY + enemy.height/2 - 8, 2.5, 0, Math.PI * 2);
+        ctx.arc(drawX + enemy.width/2 + 8, drawY + enemy.height/2 - 8, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+// ============================================
+// PROJECTILES
+// ============================================
+
+function updateProjectiles() {
+    const tiles = GameState.currentWorld === 'real' ? Levels.getReal() : Levels.getDream();
+
+    GameState.projectiles = GameState.projectiles.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+
+        // Check wall collision
+        const tileX = Math.floor(p.x / TILE_SIZE);
+        const tileY = Math.floor(p.y / TILE_SIZE);
+        if (tileY >= 0 && tileY < tiles.length && tileX >= 0 && tileX < tiles[0].length) {
+            if (tiles[tileY][tileX] === 1) return false;
+        }
+
+        // Check enemy collision
+        for (let i = GameState.enemies.length - 1; i >= 0; i--) {
+            const enemy = GameState.enemies[i];
+            if (enemy.world !== GameState.currentWorld) continue;
+
+            if (p.x > enemy.x && p.x < enemy.x + enemy.width &&
+                p.y > enemy.y && p.y < enemy.y + enemy.height) {
+                GameState.enemies.splice(i, 1);
+                return false;
+            }
+        }
+
+        return p.life > 0 && p.x > -50 && p.x < GAME_WIDTH * 3 && p.y > -50 && p.y < GAME_HEIGHT;
+    });
+}
+
+function drawProjectiles() {
+    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+
+    GameState.projectiles.forEach(p => {
+        const drawX = p.x - cameraOffset;
+        const drawY = p.y + yOffset;
+
+        if (p.isFireball) {
+            // Fireball (dream world)
+            ctx.fillStyle = '#ff6600';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Bullet (real world)
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(drawX - 5, drawY - 2, 10, 5);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(drawX - 3, drawY - 1, 6, 3);
+        }
+    });
+}
 
 // ============================================
 // WORLD RENDERING
@@ -627,7 +726,6 @@ const Player = {
 const RealWorld = {
     draw() {
         const tiles = Levels.getReal();
-
         ctx.fillStyle = '#1a3320';
         ctx.fillRect(0, 0, GAME_WIDTH, REAL_WORLD_HEIGHT);
 
@@ -640,13 +738,11 @@ const RealWorld = {
             }
         }
 
-        // Label
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(5, 5, 140, 22);
+        ctx.fillRect(5, 5, 180, 22);
         ctx.fillStyle = '#90EE90';
         ctx.font = 'bold 14px Courier New';
-        ctx.textAlign = 'left';
-        ctx.fillText(`REAL WORLD - Level ${Levels.current}`, 10, 20);
+        ctx.fillText(`REAL WORLD - X to shoot`, 10, 20);
     },
 
     drawTile(tile, px, py) {
@@ -664,39 +760,38 @@ const RealWorld = {
                 ctx.fillStyle = '#9933ff';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#cc66ff';
-                const pulse = 8 + Math.sin(Date.now() / 200) * 4;
+                const pulse = 12 + Math.sin(Date.now() / 200) * 6;
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 3, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 4, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 3:
                 ctx.fillStyle = '#654321';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#8B4513';
-                ctx.fillRect(px + 3, py + 2, TILE_SIZE - 6, TILE_SIZE - 4);
+                ctx.fillRect(px + 4, py + 2, TILE_SIZE - 8, TILE_SIZE - 4);
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 4, 5, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 8, 8, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(px + TILE_SIZE/2 - 2, py + TILE_SIZE/2 - 4, 4, 8);
                 break;
             case 4:
                 ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + 12, 7, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + 20, 12, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(px + TILE_SIZE/2 - 2, py + 16, 4, 10);
-                ctx.fillRect(px + TILE_SIZE/2, py + 20, 6, 3);
+                ctx.fillRect(px + TILE_SIZE/2 - 4, py + 28, 8, 20);
+                ctx.fillRect(px + TILE_SIZE/2, py + 38, 12, 6);
                 break;
             case 5:
                 ctx.fillStyle = '#3a5530';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#1a3320';
-                ctx.fillRect(px + 8, py + 2, TILE_SIZE - 16, TILE_SIZE - 2);
+                ctx.fillRect(px + 12, py + 4, TILE_SIZE - 24, TILE_SIZE - 4);
                 break;
         }
     }
@@ -737,15 +832,12 @@ const DreamWorld = {
             }
         }
 
-        // Label
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(5, DREAM_WORLD_Y_OFFSET + 5, 150, 22);
+        ctx.fillRect(5, DREAM_WORLD_Y_OFFSET + 5, 200, 22);
         ctx.fillStyle = '#DDA0DD';
         ctx.font = 'bold 14px Courier New';
-        ctx.textAlign = 'left';
-        ctx.fillText(`DREAM WORLD - Level ${Levels.current}`, 10, DREAM_WORLD_Y_OFFSET + 20);
+        ctx.fillText(`DREAM WORLD - X for fireball`, 10, DREAM_WORLD_Y_OFFSET + 20);
 
-        // Door prompt
         if (GameState.nearDoor && GameState.currentWorld === 'dream') {
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
             ctx.fillRect(GAME_WIDTH/2 - 80, DREAM_WORLD_Y_OFFSET + DREAM_WORLD_HEIGHT - 35, 160, 28);
@@ -753,6 +845,7 @@ const DreamWorld = {
             ctx.font = 'bold 14px Courier New';
             ctx.textAlign = 'center';
             ctx.fillText('Press E to enter', GAME_WIDTH/2, DREAM_WORLD_Y_OFFSET + DREAM_WORLD_HEIGHT - 16);
+            ctx.textAlign = 'left';
         }
     },
 
@@ -764,62 +857,59 @@ const DreamWorld = {
                 ctx.fillStyle = '#5a3a7a';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#7a5a9a';
-                ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, 6);
+                ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, 8);
                 ctx.fillStyle = '#4a2a6a';
-                ctx.fillRect(px + 2, py + TILE_SIZE - 4, TILE_SIZE - 4, 2);
+                ctx.fillRect(px + 2, py + TILE_SIZE - 6, TILE_SIZE - 4, 4);
                 break;
             case 2:
                 ctx.fillStyle = '#33ff99';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#66ffbb';
-                const pulse = 8 + Math.sin(Date.now() / 200) * 4;
+                const pulse = 12 + Math.sin(Date.now() / 200) * 6;
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 3, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 4, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case 3:
                 ctx.fillStyle = '#654321';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#8B4513';
-                ctx.fillRect(px + 3, py + 2, TILE_SIZE - 6, TILE_SIZE - 4);
+                ctx.fillRect(px + 4, py + 2, TILE_SIZE - 8, TILE_SIZE - 4);
                 ctx.fillStyle = '#C0C0C0';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 4, 5, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2 + 8, 8, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(px + TILE_SIZE/2 - 2, py + TILE_SIZE/2 - 4, 4, 8);
                 break;
             case 4:
                 ctx.fillStyle = '#C0C0C0';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + 12, 7, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + 20, 12, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillRect(px + TILE_SIZE/2 - 2, py + 16, 4, 10);
-                ctx.fillRect(px + TILE_SIZE/2, py + 20, 6, 3);
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(px + TILE_SIZE/2 - 5, py + 10, 2, 2);
+                ctx.fillRect(px + TILE_SIZE/2 - 4, py + 28, 8, 20);
+                ctx.fillRect(px + TILE_SIZE/2, py + 38, 12, 6);
                 break;
             case 5:
                 ctx.fillStyle = '#4a3a2a';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#2a1a1a';
-                ctx.fillRect(px + 6, py + 2, TILE_SIZE - 12, TILE_SIZE - 2);
+                ctx.fillRect(px + 8, py + 4, TILE_SIZE - 16, TILE_SIZE - 4);
                 ctx.fillStyle = '#ffaa33';
                 ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 300) * 0.2;
-                ctx.fillRect(px + 8, py + 4, TILE_SIZE - 16, TILE_SIZE - 4);
+                ctx.fillRect(px + 12, py + 8, TILE_SIZE - 24, TILE_SIZE - 8);
                 ctx.globalAlpha = 1;
                 break;
             case 6:
                 ctx.fillStyle = '#ffd700';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                 ctx.fillStyle = '#ffaa00';
-                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                ctx.fillRect(px + 6, py + 6, TILE_SIZE - 12, TILE_SIZE - 12);
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 6 + Math.sin(Date.now()/200)*2, 0, Math.PI * 2);
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 10 + Math.sin(Date.now()/200)*3, 0, Math.PI * 2);
                 ctx.fill();
                 break;
         }
@@ -835,7 +925,6 @@ function checkInteractions() {
 
     const tiles = GameState.currentWorld === 'real' ? Levels.getReal() : Levels.getDream();
     const playerRect = Player.getRect();
-
     const centerX = Math.floor((Player.x + Player.width / 2) / TILE_SIZE);
     const centerY = Math.floor((Player.y + Player.height / 2) / TILE_SIZE);
 
@@ -846,23 +935,15 @@ function checkInteractions() {
             const tileX = centerX + dx;
             const tileY = centerY + dy;
 
-            if (tileY >= 0 && tileY < tiles.length &&
-                tileX >= 0 && tileX < tiles[0].length) {
-
+            if (tileY >= 0 && tileY < tiles.length && tileX >= 0 && tileX < tiles[0].length) {
                 const tile = tiles[tileY][tileX];
-                const tileRect = {
-                    x: tileX * TILE_SIZE,
-                    y: tileY * TILE_SIZE,
-                    width: TILE_SIZE,
-                    height: TILE_SIZE
-                };
+                const tileRect = { x: tileX * TILE_SIZE, y: tileY * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE };
 
                 if (rectsOverlap(playerRect, tileRect)) {
                     if (tile === 2) {
                         switchWorld();
                         return;
                     }
-
                     if (tile === 4) {
                         tiles[tileY][tileX] = 0;
                         const keyName = GameState.currentWorld === 'real' ? 'Golden Key' : 'Dream Key';
@@ -871,17 +952,14 @@ function checkInteractions() {
                             updateUI();
                         }
                     }
-
                     if (tile === 3) {
                         const neededKey = GameState.currentWorld === 'real' ? 'Dream Key' : 'Golden Key';
                         if (GameState.inventory.includes(neededKey)) {
                             tiles[tileY][tileX] = 5;
-                            const idx = GameState.inventory.indexOf(neededKey);
-                            if (idx > -1) GameState.inventory.splice(idx, 1);
+                            GameState.inventory.splice(GameState.inventory.indexOf(neededKey), 1);
                             updateUI();
                         }
                     }
-
                     if (tile === 5) {
                         GameState.nearDoor = { x: tileX, y: tileY };
                         if (GameState.keysPressed['KeyE']) {
@@ -890,7 +968,6 @@ function checkInteractions() {
                             return;
                         }
                     }
-
                     if (tile === 6) {
                         reachGoal();
                         return;
@@ -902,14 +979,12 @@ function checkInteractions() {
 }
 
 function rectsOverlap(a, b) {
-    return a.x < b.x + b.width &&
-           a.x + a.width > b.x &&
-           a.y < b.y + b.height &&
-           a.y + a.height > b.y;
+    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 function switchWorld() {
     GameState.portalCooldown = 60;
+    GameState.projectiles = [];
 
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';
@@ -931,34 +1006,24 @@ function switchWorld() {
         Player.isMoving = false;
         Player.moveProgress = 0;
     }
+    spawnEnemies();
     updateUI();
 }
 
 function enterDoor() {
-    nextLevel();
+    alert('Level Complete!');
+    Levels.reset();
+    GameState.currentWorld = 'real';
+    GameState.inventory = [];
+    GameState.cameraX = 0;
+    GameState.health = GameState.maxHealth;
+    Player.init();
+    spawnEnemies();
+    updateUI();
 }
 
 function reachGoal() {
-    nextLevel();
-}
-
-function nextLevel() {
-    if (Levels.nextLevel()) {
-        console.log(`Advancing to Level ${Levels.current}`);
-        GameState.currentWorld = 'real';
-        GameState.inventory = [];
-        GameState.cameraX = 0;
-        Player.init();
-        updateUI();
-    } else {
-        alert('Congratulations! You completed all 3 levels!');
-        Levels.reset();
-        GameState.currentWorld = 'real';
-        GameState.inventory = [];
-        GameState.cameraX = 0;
-        Player.init();
-        updateUI();
-    }
+    enterDoor();
 }
 
 function updateUI() {
@@ -967,18 +1032,16 @@ function updateUI() {
     const hintsEl = document.getElementById('controls-hint');
 
     if (GameState.currentWorld === 'real') {
-        indicator.textContent = `REAL WORLD - L${Levels.current}`;
+        indicator.textContent = `REAL WORLD`;
         indicator.className = 'real-world';
-        hintsEl.textContent = 'Arrows: step';
+        hintsEl.textContent = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
     } else {
-        indicator.textContent = `DREAM WORLD - L${Levels.current}`;
+        indicator.textContent = `DREAM WORLD`;
         indicator.className = 'dream-world';
-        hintsEl.textContent = 'Arrows + Space | E: door';
+        hintsEl.textContent = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
     }
 
-    inventoryEl.textContent = GameState.inventory.length > 0
-        ? GameState.inventory.join(', ')
-        : 'Empty';
+    inventoryEl.textContent = GameState.inventory.length > 0 ? GameState.inventory.join(', ') : 'Empty';
 }
 
 function drawDivider() {
@@ -1006,6 +1069,8 @@ function drawActiveHighlight() {
 
 function update() {
     Player.update();
+    updateEnemies();
+    updateProjectiles();
     checkInteractions();
 }
 
@@ -1015,6 +1080,8 @@ function draw() {
     drawDivider();
     DreamWorld.draw();
     drawActiveHighlight();
+    drawEnemies();
+    drawProjectiles();
     Player.draw();
 }
 
@@ -1030,7 +1097,8 @@ function gameLoop() {
 
 Levels.loadLevel(1);
 Player.init();
+spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v0.9 - Doubled size (640x640 Real World, 64px tiles)');
+console.log('Dreamworld v1.0 - Combat Update! Arrows to move, X to shoot/fireball');

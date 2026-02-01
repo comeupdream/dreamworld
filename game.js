@@ -778,7 +778,10 @@ const GameState = {
     bossDefeated: {},   // Track defeated bosses by level
     bossUnlocked: false, // True after reaching dream goal on boss level
     // Life system
-    lives: 2            // Extra lives (2 = 3 total chances per level)
+    lives: 2,           // Extra lives (2 = 3 total chances per level)
+    // Message system
+    messageText: '',    // Current message to display
+    messageTimer: 0     // How long to show message
 };
 
 // ============================================
@@ -982,6 +985,7 @@ const Player = {
         if (this.meleeActive > 0) this.meleeActive--;
         if (GameState.powerBoostTimer > 0) GameState.powerBoostTimer--;
         if (GameState.shieldTimer > 0) GameState.shieldTimer--;
+        if (GameState.messageTimer > 0) GameState.messageTimer--;
 
         if (GameState.currentWorld === 'real') {
             this.updateTopDown();
@@ -1359,13 +1363,21 @@ const Player = {
         if (this.isJumping || this.isFalling) return;
         if (!this.isSolid(this.gridX, this.gridY + 1, tiles)) return;
 
+        // Jump 2 tiles up - can pass through platforms from below (one-way platforms)
         let targetY = Math.max(0, this.gridY - 2);
 
-        // Check ceiling
+        // Only check for actual ceiling/wall blocks, not floating platforms
+        // A platform is "floating" if there's empty space below it
         for (let y = this.gridY - 1; y >= targetY; y--) {
             if (y >= 0 && tiles[y] && tiles[y][this.gridX] === 1) {
-                targetY = y + 1;
-                break;
+                // Check if this is a solid ceiling (has solid below it) vs floating platform
+                const hasGroundBelow = y + 1 < tiles.length && tiles[y + 1] && tiles[y + 1][this.gridX] === 1;
+                if (hasGroundBelow) {
+                    // This is part of a solid structure, block here
+                    targetY = y + 1;
+                    break;
+                }
+                // Otherwise it's a floating platform - can jump through!
             }
         }
 
@@ -2988,6 +3000,7 @@ function switchWorld() {
         // Spawn boss only if unlocked (player reached dream goal first)
         if (GameState.bossUnlocked && !GameState.bossDefeated[Levels.current]) {
             spawnBoss(Levels.current);
+            showMessage('NIGHTMARE KURIBOH APPEARS!', 120);
         }
     }
     spawnEnemies(); // Will now respect killed enemies tracker
@@ -2999,7 +3012,7 @@ function enterDoor() {
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
         // Unlock boss - player must return to real world to fight
         GameState.bossUnlocked = true;
-        console.log('Boss unlocked! Return to the portal to face the Nightmare Kuriboh!');
+        showMessage('BOSS UNLOCKED! Return to the portal!', 180);
         return; // Don't complete level yet
     }
     completeLevel();
@@ -3010,11 +3023,15 @@ function reachGoal() {
     if (LevelTemplates.bossLevels.includes(Levels.current) && !GameState.bossDefeated[Levels.current]) {
         // Unlock boss - player must return to real world to fight
         GameState.bossUnlocked = true;
-        // Show message hint (could add visual later)
-        console.log('Boss unlocked! Return to the portal to face the Nightmare Kuriboh!');
+        showMessage('BOSS UNLOCKED! Return to the portal!', 180);
         return; // Don't complete level yet
     }
     completeLevel();
+}
+
+function showMessage(text, duration) {
+    GameState.messageText = text;
+    GameState.messageTimer = duration;
 }
 
 function completeLevel() {
@@ -3172,6 +3189,31 @@ function drawPowerUpStatus() {
     }
 }
 
+function drawMessage() {
+    if (GameState.messageTimer <= 0 || !GameState.messageText) return;
+
+    const yPos = GameState.currentWorld === 'real' ? GAME_HEIGHT / 2 - 100 : DREAM_WORLD_Y_OFFSET + 60;
+
+    // Pulsing effect
+    const pulse = Math.sin(Date.now() * 0.01) * 0.2 + 0.8;
+
+    // Background
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * pulse})`;
+    ctx.fillRect(GAME_WIDTH / 2 - 180, yPos - 15, 360, 40);
+
+    // Border
+    ctx.strokeStyle = `rgba(255, 100, 100, ${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(GAME_WIDTH / 2 - 180, yPos - 15, 360, 40);
+
+    // Text
+    ctx.fillStyle = `rgba(255, 255, 100, ${pulse})`;
+    ctx.font = 'bold 16px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(GameState.messageText, GAME_WIDTH / 2, yPos + 10);
+    ctx.textAlign = 'left';
+}
+
 // ============================================
 // GAME LOOP
 // ============================================
@@ -3205,6 +3247,7 @@ function draw() {
     drawProjectiles();
     Player.draw();
     drawPowerUpStatus();
+    drawMessage();
 
     // Pause overlay
     if (GameState.screenState === 'paused') {

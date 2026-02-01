@@ -897,6 +897,75 @@ const LevelTemplates = {
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ],
+        // Level 4: Maze-like, 15% harder than L1
+        4: [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,4,0,0,0,1],
+            [1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1],
+            [1,0,0,1,1,0,1,0,0,0,0,1,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,1],
+            [1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ],
+        // Level 5: Central obstacle cluster, 15% harder than L2
+        5: [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,4,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+            [1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,0,0,1],
+            [1,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ],
+        // Level 6: Arena for reference (boss is in Dream), tough enemies
+        6: [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,1],
+            [1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,3,0,1],
+            [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
         ]
     },
     dreamWorld: {
@@ -942,6 +1011,51 @@ const LevelTemplates = {
             [1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,6],
             [0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+        ],
+        // Level 4: Wider gaps, 15% harder than L1 (65 tiles wide)
+        4: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,3,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+        ],
+        // Level 5: Vertical climbing section, 15% harder than L2 (75 tiles wide)
+        5: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,6],
+            [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,3,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
+        ],
+        // Level 6: Boss gauntlet - long run to Void Specter (90 tiles wide)
+        6: [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
+            [0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
+            [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,6],
+            [0,0,0,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ]
     },
     // Enemy spawn positions per level - updated for 20x20 grid
@@ -962,6 +1076,26 @@ const LevelTemplates = {
                 { x: 12, y: 12, type: 'chase', speed: 0.4 },
                 { x: 4, y: 4, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2, variant: 'shadow' },
                 { x: 14, y: 14, type: 'patrol', patrol: 'vertical', range: 4, speed: 1.2 }
+            ],
+            // Level 4: 15% harder than L1 - more enemies, faster
+            4: [
+                { x: 6, y: 6, type: 'patrol', patrol: 'horizontal', range: 3, speed: 0.92 },
+                { x: 10, y: 10, type: 'patrol', patrol: 'vertical', range: 3, speed: 0.92 },
+                { x: 14, y: 6, type: 'chase', speed: 0.46 }
+            ],
+            // Level 5: 15% harder than L2 - more shadows
+            5: [
+                { x: 10, y: 10, type: 'chase', speed: 0.46 },
+                { x: 14, y: 4, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.15, variant: 'shadow' },
+                { x: 4, y: 12, type: 'patrol', patrol: 'vertical', range: 3, speed: 1.15, variant: 'shadow' },
+                { x: 8, y: 8, type: 'chase', speed: 0.5 }
+            ],
+            // Level 6: Tough enemies before boss
+            6: [
+                { x: 10, y: 8, type: 'chase', speed: 0.58, variant: 'shadow' },
+                { x: 12, y: 12, type: 'chase', speed: 0.46, variant: 'shadow' },
+                { x: 4, y: 4, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38, variant: 'shadow' },
+                { x: 14, y: 14, type: 'patrol', patrol: 'vertical', range: 4, speed: 1.38 }
             ]
         },
         dream: {
@@ -978,11 +1112,30 @@ const LevelTemplates = {
                 // Level 3 dream world is the BOSS ARENA - fewer regular enemies
                 { x: 12, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6, variant: 'shadow' },
                 { x: 28, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4, variant: 'shadow' }
+            ],
+            // Level 4: 15% harder than L1
+            4: [
+                { x: 18, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
+                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
+                { x: 50, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 }
+            ],
+            // Level 5: 15% harder than L2
+            5: [
+                { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
+                { x: 30, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38, variant: 'shadow' },
+                { x: 45, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
+                { x: 60, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 }
+            ],
+            // Level 6: Boss gauntlet - all shadows
+            6: [
+                { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
+                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.61, variant: 'shadow' },
+                { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.84, variant: 'shadow' }
             ]
         }
     },
     // Boss levels - which levels have a boss
-    bossLevels: [3] // Level 3 has a boss
+    bossLevels: [3, 6] // Level 3 has mini-boss, Level 6 has final boss
 };
 
 // ============================================
@@ -991,7 +1144,7 @@ const LevelTemplates = {
 
 const Levels = {
     current: 1,
-    maxLevel: 3,
+    maxLevel: 6,
     realWorld: null,
     dreamWorld: null,
 
@@ -1053,7 +1206,11 @@ const GameState = {
     messageTimer: 0,    // How long to show message
     // Game over system
     gameOver: false,    // True when showing game over screen
-    gameOverTimer: 0    // Animation timer for game over
+    gameOverTimer: 0,   // Animation timer for game over
+    // Shop system
+    coins: 0,           // Currency for shop
+    shopSelection: 0,   // Current shop menu selection
+    inShop: false       // True when in shop screen
 };
 
 // ============================================
@@ -1093,6 +1250,22 @@ document.addEventListener('keydown', (e) => {
             Audio8Bit.playPickup();
         } else if (e.code === 'Enter' || e.code === 'Space') {
             handlePauseSelection();
+        }
+        e.preventDefault();
+        return;
+    }
+
+    // Handle shop input
+    if (GameState.inShop) {
+        const itemCount = ShopItems.length;
+        if (e.code === 'ArrowUp') {
+            GameState.shopSelection = (GameState.shopSelection - 1 + itemCount) % itemCount;
+            Audio8Bit.playPickup();
+        } else if (e.code === 'ArrowDown') {
+            GameState.shopSelection = (GameState.shopSelection + 1) % itemCount;
+            Audio8Bit.playPickup();
+        } else if (e.code === 'Enter' || e.code === 'Space') {
+            buyShopItem();
         }
         e.preventDefault();
         return;
@@ -1143,6 +1316,7 @@ function restartGame() {
     GameState.maxHealth = 3; // Reset to starting hearts
     GameState.lives = 2;
     GameState.score = 0;
+    GameState.coins = 0; // Reset shop currency
     GameState.inventory = [];
     GameState.usableItems = [];
     GameState.dreamEssence = 0;
@@ -1156,6 +1330,7 @@ function restartGame() {
     GameState.boss = null;
     GameState.bossDefeated = {};
     GameState.bossUnlocked = false;
+    GameState.inShop = false;
     spawnEnemies();
     updateUI();
 }
@@ -2000,6 +2175,7 @@ function damageEnemy(enemy, damage, index) {
         let points = enemy.type === 'chase' ? 150 : 100;
         if (enemy.variant === 'shadow') points += 100; // Bonus for shadow enemies
         GameState.score += points;
+        GameState.coins += Math.floor(points / 10); // Coins from kills
 
         // Spawn drop
         spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
@@ -2258,7 +2434,7 @@ function drawEnemies() {
 
 // Boss templates - can add more bosses for different levels
 const BossTemplates = {
-    3: { // Level 3 boss
+    3: { // Level 3 mini-boss
         name: 'Nightmare Kuriboh',
         hp: 20,
         width: 44,  // About 2x ghost size (ghost is 22px)
@@ -2267,7 +2443,22 @@ const BossTemplates = {
         speed: 0.8,  // Nerfed: slower base speed (was 1.5)
         patterns: ['roam', 'charge'],
         spawnX: 10, // Center of real world grid
-        spawnY: 10
+        spawnY: 10,
+        type: 'kuriboh'
+    },
+    6: { // Level 6 final boss - Void Specter
+        name: 'Void Specter',
+        hp: 30,
+        width: 50,
+        height: 50,
+        world: 'dream', // Boss appears in dream world!
+        speed: 0, // Doesn't move traditionally - teleports!
+        patterns: ['teleport', 'shoot'],
+        spawnX: 75, // Near end of dream world level 6
+        spawnY: 5,  // Mid-height
+        type: 'specter',
+        teleportCooldown: 180, // 3 seconds between teleports
+        shootCooldown: 60     // 1 second between shots
     }
 };
 
@@ -2290,6 +2481,7 @@ function spawnBoss(level) {
         height: template.height,
         world: template.world,
         speed: template.speed,
+        type: template.type || 'kuriboh',
         moveDir: 'right', // UDLR movement direction
         pattern: 'roam', // Top-down roaming pattern for real world
         patternTimer: 0,
@@ -2299,8 +2491,26 @@ function spawnBoss(level) {
         animFrame: 0,
         animTimer: 0,
         attackCooldown: 0,
-        phase: 1 // Boss gets harder at lower HP
+        phase: 1, // Boss gets harder at lower HP
+        // Specter-specific properties
+        teleportTimer: template.teleportCooldown || 180,
+        teleportCooldown: template.teleportCooldown || 180,
+        shootTimer: template.shootCooldown || 60,
+        shootCooldown: template.shootCooldown || 60,
+        tentacles: [], // Electric tentacle positions
+        plasmaPhase: 0 // For plasma animation
     };
+
+    // Initialize tentacles for Void Specter
+    if (template.type === 'specter') {
+        for (let i = 0; i < 8; i++) {
+            GameState.boss.tentacles.push({
+                angle: (i / 8) * Math.PI * 2,
+                length: 20 + Math.random() * 15,
+                phase: Math.random() * Math.PI * 2
+            });
+        }
+    }
 
     return true;
 }
@@ -2327,6 +2537,7 @@ function damageBoss(damage) {
         // Boss defeated!
         GameState.bossDefeated[boss.level] = true;
         GameState.score += 1000 * boss.level;
+        GameState.coins += 100 * boss.level; // Big coin bonus from boss
         Audio8Bit.playPickup();
 
         // Big reward drops
@@ -2342,12 +2553,118 @@ function damageBoss(damage) {
     }
 }
 
+// Void Specter boss - teleports and shoots dark orbs
+function updateVoidSpecter(boss) {
+    const tiles = Levels.getDream();
+
+    // Update plasma animation
+    boss.plasmaPhase += 0.1;
+
+    // Update tentacle animations
+    for (const tentacle of boss.tentacles) {
+        tentacle.phase += 0.15;
+        tentacle.length = 20 + Math.sin(tentacle.phase) * 10;
+    }
+
+    // Phase-based timing adjustments
+    let teleportMod = 1;
+    let shootMod = 1;
+    let projectileCount = 1;
+
+    if (boss.phase >= 3) {
+        teleportMod = 0.5;  // Teleport 2x faster
+        shootMod = 0.5;     // Shoot 2x faster
+        projectileCount = 3; // Spread shot
+    } else if (boss.phase >= 2) {
+        teleportMod = 0.67; // Teleport 1.5x faster
+        shootMod = 0.67;
+        projectileCount = 2;
+    }
+
+    // Teleport logic
+    boss.teleportTimer--;
+    if (boss.teleportTimer <= 0) {
+        // Find valid teleport position in dream world
+        const dreamWidth = tiles[0].length * TILE_SIZE;
+        const dreamHeight = tiles.length * TILE_SIZE;
+
+        // Teleport to random position (prefer near player but not too close)
+        let newX, newY;
+        let attempts = 0;
+        do {
+            // Bias toward player's X position
+            const playerBias = 0.3;
+            newX = Player.x + (Math.random() - 0.5) * 400;
+            newY = 80 + Math.random() * (dreamHeight - 200); // Stay in playable area
+
+            // Clamp to world bounds
+            newX = Math.max(100, Math.min(dreamWidth - 150, newX));
+            newY = Math.max(60, Math.min(dreamHeight - 100, newY));
+
+            attempts++;
+        } while (attempts < 10 && Math.abs(newX - Player.x) < 100);
+
+        boss.x = newX;
+        boss.y = newY;
+        boss.teleportTimer = boss.teleportCooldown * teleportMod;
+
+        // Visual/audio feedback for teleport
+        Audio8Bit.playPortal();
+    }
+
+    // Shooting logic
+    boss.shootTimer--;
+    if (boss.shootTimer <= 0) {
+        // Shoot dark orb(s) at player
+        const centerX = boss.x + boss.width / 2;
+        const centerY = boss.y + boss.height / 2;
+
+        for (let i = 0; i < projectileCount; i++) {
+            // Calculate angle to player with spread
+            let dx = Player.x + Player.width/2 - centerX;
+            let dy = Player.y + Player.height/2 - centerY;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+
+            // Add spread for multiple projectiles
+            let spreadAngle = 0;
+            if (projectileCount > 1) {
+                spreadAngle = ((i - (projectileCount-1)/2) * 0.3);
+            }
+
+            const baseAngle = Math.atan2(dy, dx);
+            const angle = baseAngle + spreadAngle;
+
+            const speed = 4 + boss.phase; // Gets faster in later phases
+
+            // Add to projectiles as enemy projectile
+            GameState.projectiles.push({
+                x: centerX,
+                y: centerY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                isEnemyProjectile: true,
+                isDarkOrb: true, // Special visual
+                life: 180
+            });
+        }
+
+        boss.shootTimer = boss.shootCooldown * shootMod;
+        Audio8Bit.playLaser(true); // Fireball sound
+    }
+
+    // Collision with player
+    const playerRect = Player.getRect();
+    const bossRect = { x: boss.x, y: boss.y, width: boss.width, height: boss.height };
+    if (rectsOverlap(playerRect, bossRect)) {
+        Player.takeDamage();
+    }
+}
+
 function updateBoss() {
     if (!GameState.boss || !GameState.boss.active) return;
     if (GameState.currentWorld !== GameState.boss.world) return;
 
     const boss = GameState.boss;
-    const tiles = Levels.getReal();
     boss.meleeHit = false; // Reset melee hit flag each frame
     boss.animTimer++;
     if (boss.animTimer > 8) {
@@ -2355,6 +2672,14 @@ function updateBoss() {
         boss.animFrame = (boss.animFrame + 1) % 4;
     }
 
+    // Void Specter has unique behavior
+    if (boss.type === 'specter') {
+        updateVoidSpecter(boss);
+        return;
+    }
+
+    // Kuriboh behavior (original)
+    const tiles = Levels.getReal();
     boss.patternTimer++;
     boss.dirChangeTimer++;
 
@@ -2466,11 +2791,169 @@ function updateBoss() {
     }
 }
 
+// Draw Void Specter - plasma orb with electric tentacles
+function drawVoidSpecter(boss) {
+    const yOffset = DREAM_WORLD_Y_OFFSET;
+    const cameraOffset = GameState.cameraX;
+
+    const drawX = boss.x - cameraOffset;
+    const drawY = boss.y + yOffset;
+
+    // Skip if off screen
+    if (drawX < -boss.width - 50 || drawX > GAME_WIDTH + boss.width + 50) return;
+
+    // Decrement hit flash
+    if (boss.hitFlash > 0) boss.hitFlash--;
+
+    const centerX = drawX + boss.width / 2;
+    const centerY = drawY + boss.height / 2;
+    const time = Date.now() / 1000;
+    const radius = boss.width / 2;
+
+    // Outer glow
+    const glowGradient = ctx.createRadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, radius * 2);
+    glowGradient.addColorStop(0, 'rgba(138, 43, 226, 0.3)');
+    glowGradient.addColorStop(0.5, 'rgba(75, 0, 130, 0.2)');
+    glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glowGradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Electric tentacles - drawn first (behind orb)
+    ctx.lineCap = 'round';
+    for (const tentacle of boss.tentacles) {
+        const baseAngle = tentacle.angle + time * 0.5;
+        const segments = 6;
+        const segmentLength = tentacle.length / segments;
+
+        // Draw lightning bolt tentacle
+        ctx.beginPath();
+        let tx = centerX + Math.cos(baseAngle) * radius * 0.8;
+        let ty = centerY + Math.sin(baseAngle) * radius * 0.8;
+        ctx.moveTo(tx, ty);
+
+        for (let s = 0; s < segments; s++) {
+            const segAngle = baseAngle + Math.sin(tentacle.phase + s * 0.8 + time * 8) * 0.5;
+            const jitter = Math.sin(tentacle.phase + s * 2 + time * 15) * 5;
+            tx += Math.cos(segAngle) * segmentLength + jitter * 0.3;
+            ty += Math.sin(segAngle) * segmentLength + jitter * 0.3;
+            ctx.lineTo(tx, ty);
+        }
+
+        // Glow effect for tentacle
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(100, 200, 255, 0.6)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Spark at end
+        if (Math.random() < 0.3) {
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(tx, ty, 2 + Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Main plasma orb
+    if (boss.hitFlash > 0) {
+        ctx.fillStyle = '#fff';
+    } else {
+        // Multi-layer plasma effect
+        const plasmaGradient = ctx.createRadialGradient(
+            centerX - radius * 0.2, centerY - radius * 0.2, 0,
+            centerX, centerY, radius
+        );
+
+        // Phase affects color intensity
+        const phaseIntensity = boss.phase >= 3 ? 1.5 : boss.phase >= 2 ? 1.2 : 1;
+
+        plasmaGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 * phaseIntensity})`);
+        plasmaGradient.addColorStop(0.2, `rgba(200, 150, 255, ${0.8 * phaseIntensity})`);
+        plasmaGradient.addColorStop(0.4, `rgba(138, 43, 226, ${0.9 * phaseIntensity})`);
+        plasmaGradient.addColorStop(0.7, `rgba(75, 0, 130, 1)`);
+        plasmaGradient.addColorStop(1, `rgba(30, 0, 50, 1)`);
+        ctx.fillStyle = plasmaGradient;
+    }
+
+    // Draw main orb
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner plasma swirls
+    if (boss.hitFlash <= 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+            const swirlAngle = boss.plasmaPhase + (i / 4) * Math.PI * 2;
+            const swirlX = centerX + Math.cos(swirlAngle) * radius * 0.4;
+            const swirlY = centerY + Math.sin(swirlAngle) * radius * 0.4;
+            const swirlSize = radius * 0.3 + Math.sin(boss.plasmaPhase * 2 + i) * radius * 0.1;
+
+            const swirlGrad = ctx.createRadialGradient(swirlX, swirlY, 0, swirlX, swirlY, swirlSize);
+            swirlGrad.addColorStop(0, 'rgba(255, 200, 255, 0.6)');
+            swirlGrad.addColorStop(0.5, 'rgba(200, 100, 255, 0.3)');
+            swirlGrad.addColorStop(1, 'rgba(100, 0, 200, 0)');
+            ctx.fillStyle = swirlGrad;
+            ctx.beginPath();
+            ctx.arc(swirlX, swirlY, swirlSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+
+        // Central bright core
+        const coreGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.3);
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        coreGrad.addColorStop(0.5, 'rgba(200, 200, 255, 0.4)');
+        coreGrad.addColorStop(1, 'rgba(150, 100, 255, 0)');
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(centerX - radius * 0.3, centerY - radius * 0.3, radius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Phase 3: Intense aura
+    if (boss.phase >= 3 && boss.hitFlash <= 0) {
+        ctx.strokeStyle = 'rgba(255, 0, 255, 0.6)';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#ff00ff';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + 8 + Math.sin(time * 10) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    // Draw health bar
+    drawBossHealthBar();
+}
+
 function drawBoss() {
     if (!GameState.boss || !GameState.boss.active) return;
     if (GameState.currentWorld !== GameState.boss.world) return;
 
     const boss = GameState.boss;
+
+    // Void Specter has unique appearance
+    if (boss.type === 'specter') {
+        drawVoidSpecter(boss);
+        return;
+    }
+
     const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
     const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
 
@@ -2716,6 +3199,17 @@ function updateProjectiles() {
             if (tiles[tileY][tileX] === 1) return false;
         }
 
+        // Enemy projectiles (from Void Specter) damage player
+        if (p.isEnemyProjectile) {
+            const playerRect = Player.getRect();
+            if (p.x > playerRect.x && p.x < playerRect.x + playerRect.width &&
+                p.y > playerRect.y && p.y < playerRect.y + playerRect.height) {
+                Player.takeDamage();
+                return false; // Projectile consumed
+            }
+            return p.life > 0 && p.x > -50 && p.x < GAME_WIDTH * 3 && p.y > -50 && p.y < GAME_HEIGHT;
+        }
+
         // Check enemy collision
         for (let i = GameState.enemies.length - 1; i >= 0; i--) {
             const enemy = GameState.enemies[i];
@@ -2798,6 +3292,7 @@ function collectDrop(drop) {
     switch (drop.type) {
         case 'coin':
             GameState.score += 50;
+            GameState.coins += 10; // Currency for shop
             break;
         case 'health':
             if (GameState.health < GameState.maxHealth) {
@@ -2994,6 +3489,31 @@ function drawProjectiles() {
     GameState.projectiles.forEach(p => {
         const drawX = p.x - cameraOffset;
         const drawY = p.y + yOffset;
+
+        // Dark orb from Void Specter
+        if (p.isDarkOrb) {
+            // Outer glow
+            ctx.fillStyle = 'rgba(75, 0, 130, 0.5)';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 12, 0, Math.PI * 2);
+            ctx.fill();
+            // Main orb
+            ctx.fillStyle = '#4b0082';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 8, 0, Math.PI * 2);
+            ctx.fill();
+            // Core
+            ctx.fillStyle = '#9932cc';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 5, 0, Math.PI * 2);
+            ctx.fill();
+            // Bright center
+            ctx.fillStyle = '#da70d6';
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, 2, 0, Math.PI * 2);
+            ctx.fill();
+            return;
+        }
 
         if (p.isFireball) {
             // Fireball (dream world)
@@ -3386,23 +3906,96 @@ function showMessage(text, duration) {
     GameState.messageTimer = duration;
 }
 
+// Start the next level (called after shop or directly)
+function startNextLevel() {
+    GameState.currentWorld = 'real';
+    GameState.inventory = [];
+    GameState.cameraX = 0;
+    GameState.lives = 2; // Reset lives for new level
+    // Keep score, essence, energy, coins, and usable items!
+    Player.init();
+    spawnEnemies();
+    // Boss will spawn when player unlocks it (reaches dream goal then returns)
+    updateUI();
+}
+
+// Exit shop and continue to next level
+function exitShop() {
+    GameState.inShop = false;
+    startNextLevel();
+}
+
+// Shop items configuration
+const ShopItems = [
+    { name: 'Heart (+1 Max)', price: 100, action: () => {
+        if (GameState.maxHealth < 5) {
+            GameState.maxHealth++;
+            GameState.health = Math.min(GameState.health + 1, GameState.maxHealth);
+            return true;
+        }
+        return false; // Already at max
+    }},
+    { name: 'Extra Life', price: 150, action: () => {
+        GameState.lives++;
+        return true;
+    }},
+    { name: 'Basic Shield', price: 75, action: () => {
+        GameState.usableItems.push({ type: 'shield', hits: 1 });
+        return true;
+    }},
+    { name: 'Steel Shield', price: 200, action: () => {
+        GameState.usableItems.push({ type: 'shield', hits: 3 });
+        return true;
+    }},
+    { name: 'Crystal Shield', price: 400, action: () => {
+        GameState.usableItems.push({ type: 'shield', hits: 5 });
+        return true;
+    }},
+    { name: 'Power Boost', price: 50, action: () => {
+        GameState.usableItems.push({ type: 'power_boost' });
+        return true;
+    }},
+    { name: '>>> CONTINUE >>>', price: 0, action: () => {
+        exitShop();
+        return true;
+    }}
+];
+
+function buyShopItem() {
+    const item = ShopItems[GameState.shopSelection];
+    if (item.price === 0 || GameState.coins >= item.price) {
+        if (item.action()) {
+            GameState.coins -= item.price;
+            Audio8Bit.playPickup();
+        } else {
+            // Can't buy (e.g., max health reached)
+            Audio8Bit.playDamage();
+        }
+    } else {
+        // Not enough coins
+        Audio8Bit.playDamage();
+    }
+}
+
 function completeLevel() {
     GameState.projectiles = [];
     GameState.drops = [];
     GameState.boss = null; // Clear any existing boss
     GameState.bossUnlocked = false; // Reset for next level
 
+    // Check if we just completed level 3 - show shop before level 4
+    const justCompletedLevel = Levels.current;
+
     if (Levels.nextLevel()) {
+        // Show shop after level 3 boss
+        if (justCompletedLevel === 3) {
+            GameState.inShop = true;
+            GameState.shopSelection = 0;
+            return; // Don't start level 4 yet
+        }
+
         // Progress to next level - reset for new level
-        GameState.currentWorld = 'real';
-        GameState.inventory = [];
-        GameState.cameraX = 0;
-        GameState.lives = 2; // Reset lives for new level
-        // Keep score, essence, energy, and usable items!
-        Player.init();
-        spawnEnemies();
-        // Boss will spawn when player unlocks it (reaches dream goal then returns)
-        updateUI();
+        startNextLevel();
     } else {
         // Game complete - show victory and restart
         GameState.gameComplete = true;
@@ -3438,8 +4031,8 @@ function updateUI() {
     const inventoryEl = document.getElementById('inventory-items');
     const hintsEl = document.getElementById('controls-hint');
 
-    // Score and level
-    const scoreText = `SCORE: ${GameState.score}`;
+    // Score, coins and level
+    const scoreText = `SCORE: ${GameState.score} | 🪙${GameState.coins}`;
 
     if (GameState.currentWorld === 'real') {
         indicator.textContent = `REAL WORLD - Level ${Levels.current} | ${scoreText}`;
@@ -3609,6 +4202,12 @@ function draw() {
     // Handle different screen states
     if (GameState.screenState === 'title') {
         drawTitleScreen();
+        return;
+    }
+
+    // Shop screen (after level 3 boss)
+    if (GameState.inShop) {
+        drawShop();
         return;
     }
 
@@ -3934,6 +4533,85 @@ function drawGameOver() {
     }
 }
 
+function drawShop() {
+    // Dark purple background
+    ctx.fillStyle = '#1a0a2e';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Starfield background effect
+    const time = Date.now() / 1000;
+    for (let i = 0; i < 50; i++) {
+        const x = (i * 137 + time * 10) % GAME_WIDTH;
+        const y = (i * 89 + Math.sin(time + i) * 20) % GAME_HEIGHT;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(time * 2 + i) * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(x, y, 1 + Math.sin(time + i) * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Shop title
+    ctx.fillStyle = '#ff69b4';
+    ctx.font = 'bold 36px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('DREAM SHOP', GAME_WIDTH / 2, 60);
+
+    // Coins display
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 20px Courier New';
+    ctx.fillText(`Coins: ${GameState.coins}`, GAME_WIDTH / 2, 95);
+
+    // Shop items
+    const startY = 140;
+    const itemHeight = 45;
+
+    ShopItems.forEach((item, i) => {
+        const y = startY + i * itemHeight;
+        const isSelected = GameState.shopSelection === i;
+        const canAfford = item.price === 0 || GameState.coins >= item.price;
+
+        // Selection background
+        if (isSelected) {
+            ctx.fillStyle = 'rgba(147, 112, 219, 0.4)';
+            ctx.fillRect(60, y - 15, GAME_WIDTH - 120, 38);
+            ctx.strokeStyle = '#9370db';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(60, y - 15, GAME_WIDTH - 120, 38);
+        }
+
+        // Item name
+        if (item.price === 0) {
+            // Continue button - special styling
+            ctx.fillStyle = isSelected ? '#00ff00' : '#88ff88';
+            ctx.font = isSelected ? 'bold 18px Courier New' : '16px Courier New';
+        } else {
+            ctx.fillStyle = canAfford ? (isSelected ? '#fff' : '#ccc') : '#666';
+            ctx.font = isSelected ? 'bold 16px Courier New' : '14px Courier New';
+        }
+        ctx.textAlign = 'left';
+        ctx.fillText(item.name, 80, y + 5);
+
+        // Price
+        if (item.price > 0) {
+            ctx.textAlign = 'right';
+            ctx.fillStyle = canAfford ? '#ffd700' : '#664400';
+            ctx.fillText(`${item.price} coins`, GAME_WIDTH - 80, y + 5);
+        }
+    });
+
+    // Current inventory display
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#888';
+    ctx.font = '12px Courier New';
+    ctx.fillText(`Health: ${GameState.health}/${GameState.maxHealth} | Lives: ${GameState.lives + 1} | Items: ${GameState.usableItems.length}`, GAME_WIDTH / 2, GAME_HEIGHT - 50);
+
+    // Controls hint
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Courier New';
+    ctx.fillText('↑/↓ to select, ENTER to buy', GAME_WIDTH / 2, GAME_HEIGHT - 25);
+
+    ctx.textAlign = 'left';
+}
+
 function drawPauseMenu() {
     // Darken game
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -4007,6 +4685,7 @@ function resetToTitle() {
     GameState.health = GameState.maxHealth;
     GameState.lives = 2;
     GameState.score = 0;
+    GameState.coins = 0; // Reset shop currency
     GameState.inventory = [];
     GameState.drops = [];
     GameState.projectiles = [];
@@ -4019,6 +4698,7 @@ function resetToTitle() {
     GameState.boss = null;
     GameState.bossDefeated = {};
     GameState.bossUnlocked = false;
+    GameState.inShop = false;
     GameState.currentWorld = 'real';
     GameState.cameraX = 0;
     GameState.screenState = 'title';
@@ -4038,4 +4718,4 @@ spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v1.6 - Boss & Enemy Update! Nightmare Kuriboh boss at level 3, shadow ghosts (2 HP), charged shots deal 3x damage');
+console.log('Dreamworld v2.0 - Double the Content! 6 levels, 2 bosses (Nightmare Kuriboh L3, Void Specter L6), Dream Shop after L3, coins system!');

@@ -1035,7 +1035,6 @@ function spawnDrop(x, y, enemyType) {
         x: x,
         y: y,
         type: dropType,
-        life: 300, // Disappears after 5 seconds
         bobOffset: Math.random() * Math.PI * 2
     });
 }
@@ -1044,9 +1043,6 @@ function updateDrops() {
     const playerRect = Player.getRect();
 
     GameState.drops = GameState.drops.filter(drop => {
-        drop.life--;
-        if (drop.life <= 0) return false;
-
         // Check pickup collision
         const dropRect = { x: drop.x - 8, y: drop.y - 8, width: 16, height: 16 };
         if (rectsOverlap(playerRect, dropRect)) {
@@ -1054,7 +1050,7 @@ function updateDrops() {
             return false;
         }
 
-        return true;
+        return true; // Drops persist until collected
     });
 }
 
@@ -1108,9 +1104,6 @@ function drawDrops() {
         const drawY = drop.y + yOffset + bob;
 
         if (drawX < -16 || drawX > GAME_WIDTH + 16) return;
-
-        // Flash when about to disappear
-        if (drop.life < 60 && Math.floor(drop.life / 8) % 2 === 0) return;
 
         switch (drop.type) {
             case 'coin':
@@ -1217,10 +1210,10 @@ function useItem(slot) {
 
     switch (item) {
         case 'power_boost':
-            GameState.powerBoostTimer = 300; // 5 seconds
+            GameState.powerBoostTimer = 900; // 15 seconds
             break;
         case 'shield':
-            GameState.shieldTimer = 600; // 10 seconds
+            GameState.shieldTimer = 1200; // 20 seconds
             break;
     }
     updateUI();
@@ -1229,19 +1222,19 @@ function useItem(slot) {
 function useWorldPower() {
     // Use Dream Essence in Real World, Real Energy in Dream World
     if (GameState.currentWorld === 'real' && GameState.dreamEssence > 0) {
-        // Dream Essence: Slow motion for enemies + increased damage
+        // Dream Essence: Power boost + heal
         GameState.dreamEssence--;
-        GameState.powerBoostTimer = Math.max(GameState.powerBoostTimer, 180); // 3 seconds
+        GameState.powerBoostTimer = Math.max(GameState.powerBoostTimer, 600); // 10 seconds
         // Also heal 1 HP
         if (GameState.health < GameState.maxHealth) {
             GameState.health++;
         }
         updateUI();
     } else if (GameState.currentWorld === 'dream' && GameState.realEnergy > 0) {
-        // Real Energy: Extra jump height + brief invincibility
+        // Real Energy: Invincibility + shield
         GameState.realEnergy--;
-        GameState.invincible = Math.max(GameState.invincible, 120); // 2 seconds invincibility
-        GameState.shieldTimer = Math.max(GameState.shieldTimer, 180); // 3 seconds shield
+        GameState.invincible = Math.max(GameState.invincible, 300); // 5 seconds invincibility
+        GameState.shieldTimer = Math.max(GameState.shieldTimer, 600); // 10 seconds shield
         updateUI();
     }
 }

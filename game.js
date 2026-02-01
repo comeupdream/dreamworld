@@ -274,6 +274,127 @@ const Audio8Bit = {
         this.chargeGain = null;
     },
 
+    // Game over sound - pixels disintegrating, Galaga-style destruction
+    playGameOver() {
+        if (!this.ctx) return;
+        this.resume();
+
+        const now = this.ctx.currentTime;
+
+        // Initial explosion burst
+        const explosionBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.5, this.ctx.sampleRate);
+        const explosionData = explosionBuffer.getChannelData(0);
+        for (let i = 0; i < explosionBuffer.length; i++) {
+            const env = Math.exp(-i / (this.ctx.sampleRate * 0.15));
+            explosionData[i] = (Math.random() * 2 - 1) * env;
+        }
+        const explosion = this.ctx.createBufferSource();
+        const explosionGain = this.ctx.createGain();
+        const explosionFilter = this.ctx.createBiquadFilter();
+        explosion.buffer = explosionBuffer;
+        explosionFilter.type = 'lowpass';
+        explosionFilter.frequency.value = 1000;
+        explosion.connect(explosionFilter);
+        explosionFilter.connect(explosionGain);
+        explosionGain.connect(this.sfxGain);
+        explosionGain.gain.setValueAtTime(0.4, now);
+        explosion.start(now);
+
+        // Descending "death" tones (Galaga style)
+        for (let i = 0; i < 6; i++) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+
+            const startTime = now + i * 0.12;
+            const startFreq = 800 - i * 100;
+            osc.frequency.setValueAtTime(startFreq, startTime);
+            osc.frequency.exponentialRampToValueAtTime(startFreq * 0.5, startTime + 0.1);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.12);
+        }
+
+        // Pixel scatter sounds (multiple small wooshes)
+        for (let i = 0; i < 8; i++) {
+            const scatterBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.15, this.ctx.sampleRate);
+            const scatterData = scatterBuffer.getChannelData(0);
+            for (let j = 0; j < scatterBuffer.length; j++) {
+                const env = Math.pow(1 - j / scatterBuffer.length, 2);
+                scatterData[j] = (Math.random() * 2 - 1) * env;
+            }
+            const scatter = this.ctx.createBufferSource();
+            const scatterGain = this.ctx.createGain();
+            const scatterFilter = this.ctx.createBiquadFilter();
+            scatter.buffer = scatterBuffer;
+            scatterFilter.type = 'highpass';
+            scatterFilter.frequency.value = 1500 + Math.random() * 1000;
+            scatter.connect(scatterFilter);
+            scatterFilter.connect(scatterGain);
+            scatterGain.connect(this.sfxGain);
+
+            const scatterTime = now + 0.3 + i * 0.15 + Math.random() * 0.1;
+            scatterGain.gain.setValueAtTime(0, now);
+            scatterGain.gain.setValueAtTime(0.12, scatterTime);
+            scatterGain.gain.exponentialRampToValueAtTime(0.01, scatterTime + 0.12);
+            scatter.start(scatterTime);
+        }
+
+        // Low rumble (disintegration)
+        const rumbleOsc = this.ctx.createOscillator();
+        const rumbleGain = this.ctx.createGain();
+        rumbleOsc.type = 'sawtooth';
+        rumbleOsc.connect(rumbleGain);
+        rumbleGain.connect(this.sfxGain);
+        rumbleOsc.frequency.setValueAtTime(60, now);
+        rumbleOsc.frequency.exponentialRampToValueAtTime(30, now + 2);
+        rumbleGain.gain.setValueAtTime(0.2, now);
+        rumbleGain.gain.exponentialRampToValueAtTime(0.01, now + 2);
+        rumbleOsc.start(now);
+        rumbleOsc.stop(now + 2);
+
+        // Final fade-out sweep
+        const sweepOsc = this.ctx.createOscillator();
+        const sweepGain = this.ctx.createGain();
+        sweepOsc.type = 'sine';
+        sweepOsc.connect(sweepGain);
+        sweepGain.connect(this.sfxGain);
+        sweepOsc.frequency.setValueAtTime(400, now + 1.5);
+        sweepOsc.frequency.exponentialRampToValueAtTime(50, now + 3);
+        sweepGain.gain.setValueAtTime(0, now);
+        sweepGain.gain.setValueAtTime(0.15, now + 1.5);
+        sweepGain.gain.exponentialRampToValueAtTime(0.01, now + 3);
+        sweepOsc.start(now + 1.5);
+        sweepOsc.stop(now + 3);
+
+        // Scattered pixel "plinks" (forming/disintegrating)
+        for (let i = 0; i < 15; i++) {
+            const plink = this.ctx.createOscillator();
+            const plinkGain = this.ctx.createGain();
+            plink.type = 'square';
+            plink.connect(plinkGain);
+            plinkGain.connect(this.sfxGain);
+
+            const plinkTime = now + 0.5 + Math.random() * 2.5;
+            const plinkFreq = 200 + Math.random() * 800;
+            plink.frequency.setValueAtTime(plinkFreq, plinkTime);
+            plink.frequency.exponentialRampToValueAtTime(plinkFreq * 0.3, plinkTime + 0.05);
+
+            plinkGain.gain.setValueAtTime(0, now);
+            plinkGain.gain.setValueAtTime(0.08, plinkTime);
+            plinkGain.gain.exponentialRampToValueAtTime(0.01, plinkTime + 0.05);
+
+            plink.start(plinkTime);
+            plink.stop(plinkTime + 0.06);
+        }
+    },
+
     // Jetpack jump sound (dream world)
     playJetpackJump() {
         if (!this.ctx) return;
@@ -1617,6 +1738,7 @@ const Player = {
                 // Game over - trigger game over screen
                 GameState.gameOver = true;
                 GameState.gameOverTimer = 0;
+                Audio8Bit.playGameOver();
             }
         }
         updateUI();
@@ -3742,8 +3864,8 @@ function drawTitleScreen() {
 function drawGameOver() {
     const t = GameState.gameOverTimer;
 
-    // Desaturation effect - darken with reddish tint
-    const fadeIn = Math.min(1, t / 30); // Fade in over 0.5 seconds
+    // Desaturation effect - darken with reddish tint (slowed by 0.5x)
+    const fadeIn = Math.min(1, t / 60); // Fade in over 1 second
     ctx.fillStyle = `rgba(20, 0, 0, ${0.7 * fadeIn})`;
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -3754,12 +3876,12 @@ function drawGameOver() {
     }
 
     // Only show text after initial fade
-    if (t > 20) {
-        const textFade = Math.min(1, (t - 20) / 20);
+    if (t > 40) {
+        const textFade = Math.min(1, (t - 40) / 40);
 
         // Glitch offset
-        const glitchX = t < 60 ? (Math.random() - 0.5) * 10 : 0;
-        const glitchY = t < 60 ? (Math.random() - 0.5) * 5 : 0;
+        const glitchX = t < 120 ? (Math.random() - 0.5) * 10 : 0;
+        const glitchY = t < 120 ? (Math.random() - 0.5) * 5 : 0;
 
         // Big blocky "GAME OVER" text
         ctx.save();
@@ -3778,7 +3900,7 @@ function drawGameOver() {
         ctx.fillText('GAME OVER', 0, 0);
 
         // Pixel block effect on letters
-        if (t < 80) {
+        if (t < 160) {
             ctx.fillStyle = `rgba(255, 0, 0, ${0.8 * textFade})`;
             for (let i = 0; i < 10; i++) {
                 const bx = (Math.random() - 0.5) * 300;
@@ -3791,8 +3913,8 @@ function drawGameOver() {
         ctx.restore();
 
         // Subtitle
-        if (t > 60) {
-            const subFade = Math.min(1, (t - 60) / 30);
+        if (t > 120) {
+            const subFade = Math.min(1, (t - 120) / 60);
             ctx.fillStyle = `rgba(200, 200, 200, ${subFade})`;
             ctx.font = '18px Courier New';
             ctx.textAlign = 'center';
@@ -3802,7 +3924,7 @@ function drawGameOver() {
     }
 
     // VHS-style color separation at edges
-    if (t > 10 && t < 100) {
+    if (t > 20 && t < 200) {
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = `rgba(255, 0, 0, 0.1)`;
         ctx.fillRect(0, 0, 3, GAME_HEIGHT);
@@ -3863,12 +3985,12 @@ function gameLoop() {
         update();
     }
 
-    // Handle game over animation
+    // Handle game over animation (slowed by 0.5x)
     if (GameState.gameOver) {
         GameState.gameOverTimer++;
 
-        // After 180 frames (3 seconds), reset to title
-        if (GameState.gameOverTimer > 180) {
+        // After 360 frames (6 seconds), reset to title
+        if (GameState.gameOverTimer > 360) {
             resetToTitle();
         }
     }

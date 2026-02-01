@@ -1,6 +1,11 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.2 - Smaller Tiles & Grid Update
+// v1.3 - Gameplay Systems Update
+// - Persistent enemy deaths
+// - Score/points system
+// - Enemy item drops
+// - Dream Essence mechanic (world linking)
+// - Usable inventory items
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
@@ -225,7 +230,16 @@ const GameState = {
     invincible: 0, // Invincibility frames after hit
     projectiles: [],
     enemies: [],
-    gameComplete: false
+    gameComplete: false,
+    // New v1.3 systems
+    score: 0,
+    killedEnemies: { real: {}, dream: {} }, // Track killed enemies by level: { 1: [0, 2], 2: [1] } = indices
+    drops: [], // Item drops on the ground
+    dreamEssence: 0, // Collected from Dream World, powers Real World abilities
+    realEnergy: 0,   // Collected from Real World, powers Dream World abilities
+    usableItems: [], // Consumable items: health potions, power boosts, etc.
+    powerBoostTimer: 0, // Active power boost countdown
+    shieldTimer: 0      // Active shield countdown
 };
 
 // ============================================
@@ -239,7 +253,7 @@ document.addEventListener('keydown', (e) => {
         KeyState.justPressed[e.code] = true;
     }
     GameState.keysPressed[e.code] = true;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX'].includes(e.code)) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyX', 'Digit1', 'Digit2', 'Digit3', 'KeyZ'].includes(e.code)) {
         e.preventDefault();
     }
 });
@@ -302,6 +316,8 @@ const Player = {
         if (GameState.portalCooldown > 0) GameState.portalCooldown--;
         if (GameState.invincible > 0) GameState.invincible--;
         if (this.shootCooldown > 0) this.shootCooldown--;
+        if (GameState.powerBoostTimer > 0) GameState.powerBoostTimer--;
+        if (GameState.shieldTimer > 0) GameState.shieldTimer--;
 
         if (GameState.currentWorld === 'real') {
             this.updateTopDown();
@@ -315,6 +331,14 @@ const Player = {
             this.shoot();
         }
 
+        // Use items - 1, 2, 3 keys
+        if (consumeKeyPress('Digit1')) useItem(0);
+        if (consumeKeyPress('Digit2')) useItem(1);
+        if (consumeKeyPress('Digit3')) useItem(2);
+
+        // Use essence/energy power - Z key
+        if (consumeKeyPress('KeyZ')) useWorldPower();
+
         // Animation
         this.animTimer++;
         if (this.animTimer > 10) {
@@ -324,7 +348,8 @@ const Player = {
     },
 
     shoot() {
-        this.shootCooldown = 20;
+        // Faster shooting with power boost
+        this.shootCooldown = GameState.powerBoostTimer > 0 ? 10 : 20;
 
         let vx = 0, vy = 0;
         if (GameState.currentWorld === 'real') {
@@ -340,13 +365,17 @@ const Player = {
             vx = this.facing;
         }
 
+        // Faster projectiles with power boost
+        const speed = GameState.powerBoostTimer > 0 ? 12 : 8;
+
         GameState.projectiles.push({
             x: this.x + this.width / 2,
             y: this.y + this.height / 2,
-            vx: vx * 8,
-            vy: vy * 8,
+            vx: vx * speed,
+            vy: vy * speed,
             isFireball: GameState.currentWorld === 'dream',
-            life: 60
+            life: 60,
+            powered: GameState.powerBoostTimer > 0 // Track if this was a powered shot
         });
     },
 
@@ -590,12 +619,22 @@ const Player = {
 
     takeDamage() {
         if (GameState.invincible > 0) return;
+
+        // Shield blocks damage
+        if (GameState.shieldTimer > 0) {
+            GameState.shieldTimer = 0; // Shield breaks after one hit
+            GameState.invincible = 30;
+            updateUI();
+            return;
+        }
+
         GameState.health--;
         GameState.invincible = 60; // 1 second invincibility
         if (GameState.health <= 0) {
-            // Reset level
+            // Reset level (but keep killed enemies tracked)
             GameState.health = GameState.maxHealth;
             GameState.inventory = [];
+            GameState.drops = [];
             Levels.loadLevel(Levels.current);
             spawnEnemies();
             this.init();
@@ -689,10 +728,21 @@ const Player = {
 function spawnEnemies() {
     GameState.enemies = [];
     const world = GameState.currentWorld;
-    const enemyData = LevelTemplates.enemies[world === 'real' ? 'real' : 'dream'][Levels.current];
+    const worldKey = world === 'real' ? 'real' : 'dream';
+    const enemyData = LevelTemplates.enemies[worldKey][Levels.current];
+
+    // Initialize killed enemies tracker for this level if needed
+    if (!GameState.killedEnemies[worldKey][Levels.current]) {
+        GameState.killedEnemies[worldKey][Levels.current] = [];
+    }
+
+    const killedIndices = GameState.killedEnemies[worldKey][Levels.current];
 
     if (enemyData) {
-        enemyData.forEach(e => {
+        enemyData.forEach((e, index) => {
+            // Skip if this enemy was already killed
+            if (killedIndices.includes(index)) return;
+
             GameState.enemies.push({
                 x: e.x * TILE_SIZE + 2,
                 y: e.y * TILE_SIZE + 2,
@@ -706,7 +756,8 @@ function spawnEnemies() {
                 speed: e.speed || 1.0,
                 direction: 1,
                 chaseAxis: 'x', // For chase enemies: which axis to move on
-                world: world
+                world: world,
+                templateIndex: index // Track which template enemy this is
             });
         });
     }
@@ -928,13 +979,271 @@ function updateProjectiles() {
 
             if (p.x > enemy.x && p.x < enemy.x + enemy.width &&
                 p.y > enemy.y && p.y < enemy.y + enemy.height) {
+
+                // Track this enemy as killed
+                const worldKey = GameState.currentWorld === 'real' ? 'real' : 'dream';
+                if (!GameState.killedEnemies[worldKey][Levels.current]) {
+                    GameState.killedEnemies[worldKey][Levels.current] = [];
+                }
+                if (!GameState.killedEnemies[worldKey][Levels.current].includes(enemy.templateIndex)) {
+                    GameState.killedEnemies[worldKey][Levels.current].push(enemy.templateIndex);
+                }
+
+                // Award points based on enemy type
+                const points = enemy.type === 'chase' ? 150 : 100;
+                GameState.score += points;
+
+                // Spawn item drop
+                spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
+
                 GameState.enemies.splice(i, 1);
+                updateUI();
                 return false;
             }
         }
 
         return p.life > 0 && p.x > -50 && p.x < GAME_WIDTH * 3 && p.y > -50 && p.y < GAME_HEIGHT;
     });
+}
+
+// ============================================
+// ITEM DROPS
+// ============================================
+
+function spawnDrop(x, y, enemyType) {
+    // Determine drop type based on world and chance
+    const roll = Math.random();
+    let dropType;
+
+    if (GameState.currentWorld === 'real') {
+        // Real World drops: coins, health, dream essence
+        if (roll < 0.3) dropType = 'coin';
+        else if (roll < 0.45) dropType = 'health';
+        else if (roll < 0.6) dropType = 'dream_essence';
+        else if (roll < 0.7) dropType = 'power_boost';
+        else return; // No drop (30% chance)
+    } else {
+        // Dream World drops: coins, health, real energy
+        if (roll < 0.3) dropType = 'coin';
+        else if (roll < 0.45) dropType = 'health';
+        else if (roll < 0.6) dropType = 'real_energy';
+        else if (roll < 0.7) dropType = 'shield';
+        else return; // No drop (30% chance)
+    }
+
+    GameState.drops.push({
+        x: x,
+        y: y,
+        type: dropType,
+        life: 300, // Disappears after 5 seconds
+        bobOffset: Math.random() * Math.PI * 2
+    });
+}
+
+function updateDrops() {
+    const playerRect = Player.getRect();
+
+    GameState.drops = GameState.drops.filter(drop => {
+        drop.life--;
+        if (drop.life <= 0) return false;
+
+        // Check pickup collision
+        const dropRect = { x: drop.x - 8, y: drop.y - 8, width: 16, height: 16 };
+        if (rectsOverlap(playerRect, dropRect)) {
+            collectDrop(drop);
+            return false;
+        }
+
+        return true;
+    });
+}
+
+function collectDrop(drop) {
+    switch (drop.type) {
+        case 'coin':
+            GameState.score += 50;
+            break;
+        case 'health':
+            if (GameState.health < GameState.maxHealth) {
+                GameState.health++;
+            } else {
+                GameState.score += 25; // Bonus points if at full health
+            }
+            break;
+        case 'dream_essence':
+            GameState.dreamEssence++;
+            GameState.score += 25;
+            break;
+        case 'real_energy':
+            GameState.realEnergy++;
+            GameState.score += 25;
+            break;
+        case 'power_boost':
+            // Add to usable items
+            if (GameState.usableItems.length < 3) {
+                GameState.usableItems.push('power_boost');
+            } else {
+                GameState.score += 75;
+            }
+            break;
+        case 'shield':
+            // Add to usable items
+            if (GameState.usableItems.length < 3) {
+                GameState.usableItems.push('shield');
+            } else {
+                GameState.score += 75;
+            }
+            break;
+    }
+    updateUI();
+}
+
+function drawDrops() {
+    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+
+    GameState.drops.forEach(drop => {
+        const bob = Math.sin(Date.now() * 0.005 + drop.bobOffset) * 3;
+        const drawX = drop.x - cameraOffset;
+        const drawY = drop.y + yOffset + bob;
+
+        if (drawX < -16 || drawX > GAME_WIDTH + 16) return;
+
+        // Flash when about to disappear
+        if (drop.life < 60 && Math.floor(drop.life / 8) % 2 === 0) return;
+
+        switch (drop.type) {
+            case 'coin':
+                // Gold coin
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffaa00';
+                ctx.beginPath();
+                ctx.arc(drawX - 1, drawY - 1, 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'health':
+                // Red heart
+                ctx.fillStyle = '#ff4444';
+                ctx.beginPath();
+                ctx.arc(drawX - 3, drawY - 2, 4, 0, Math.PI * 2);
+                ctx.arc(drawX + 3, drawY - 2, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(drawX - 7, drawY);
+                ctx.lineTo(drawX, drawY + 8);
+                ctx.lineTo(drawX + 7, drawY);
+                ctx.fill();
+                break;
+            case 'dream_essence':
+                // Purple swirl
+                ctx.fillStyle = '#cc66ff';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff99ff';
+                ctx.beginPath();
+                const swirl = Date.now() * 0.01;
+                ctx.arc(drawX + Math.cos(swirl) * 3, drawY + Math.sin(swirl) * 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'real_energy':
+                // Green energy orb
+                ctx.fillStyle = '#44ff44';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#aaffaa';
+                ctx.beginPath();
+                const pulse = Date.now() * 0.01;
+                ctx.arc(drawX + Math.cos(pulse) * 3, drawY + Math.sin(pulse) * 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'power_boost':
+                // Orange star
+                ctx.fillStyle = '#ff8800';
+                ctx.save();
+                ctx.translate(drawX, drawY);
+                ctx.rotate(Date.now() * 0.003);
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -8);
+                    ctx.lineTo(2, -3);
+                    ctx.lineTo(7, -3);
+                    ctx.lineTo(3, 1);
+                    ctx.lineTo(5, 7);
+                    ctx.lineTo(0, 3);
+                    ctx.lineTo(-5, 7);
+                    ctx.lineTo(-3, 1);
+                    ctx.lineTo(-7, -3);
+                    ctx.lineTo(-2, -3);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+                break;
+            case 'shield':
+                // Blue shield
+                ctx.fillStyle = '#4488ff';
+                ctx.beginPath();
+                ctx.moveTo(drawX, drawY - 8);
+                ctx.lineTo(drawX + 7, drawY - 4);
+                ctx.lineTo(drawX + 7, drawY + 2);
+                ctx.lineTo(drawX, drawY + 8);
+                ctx.lineTo(drawX - 7, drawY + 2);
+                ctx.lineTo(drawX - 7, drawY - 4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#88bbff';
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+        }
+    });
+}
+
+// ============================================
+// USABLE ITEMS & WORLD POWERS
+// ============================================
+
+function useItem(slot) {
+    if (slot >= GameState.usableItems.length) return;
+
+    const item = GameState.usableItems[slot];
+    GameState.usableItems.splice(slot, 1);
+
+    switch (item) {
+        case 'power_boost':
+            GameState.powerBoostTimer = 300; // 5 seconds
+            break;
+        case 'shield':
+            GameState.shieldTimer = 600; // 10 seconds
+            break;
+    }
+    updateUI();
+}
+
+function useWorldPower() {
+    // Use Dream Essence in Real World, Real Energy in Dream World
+    if (GameState.currentWorld === 'real' && GameState.dreamEssence > 0) {
+        // Dream Essence: Slow motion for enemies + increased damage
+        GameState.dreamEssence--;
+        GameState.powerBoostTimer = Math.max(GameState.powerBoostTimer, 180); // 3 seconds
+        // Also heal 1 HP
+        if (GameState.health < GameState.maxHealth) {
+            GameState.health++;
+        }
+        updateUI();
+    } else if (GameState.currentWorld === 'dream' && GameState.realEnergy > 0) {
+        // Real Energy: Extra jump height + brief invincibility
+        GameState.realEnergy--;
+        GameState.invincible = Math.max(GameState.invincible, 120); // 2 seconds invincibility
+        GameState.shieldTimer = Math.max(GameState.shieldTimer, 180); // 3 seconds shield
+        updateUI();
+    }
 }
 
 function drawProjectiles() {
@@ -1233,6 +1542,7 @@ function rectsOverlap(a, b) {
 function switchWorld() {
     GameState.portalCooldown = 60;
     GameState.projectiles = [];
+    GameState.drops = []; // Clear drops when switching worlds
 
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';
@@ -1254,7 +1564,7 @@ function switchWorld() {
         Player.isMoving = false;
         Player.moveProgress = 0;
     }
-    spawnEnemies();
+    spawnEnemies(); // Will now respect killed enemies tracker
     updateUI();
 }
 
@@ -1268,12 +1578,14 @@ function reachGoal() {
 
 function completeLevel() {
     GameState.projectiles = [];
+    GameState.drops = [];
 
     if (Levels.nextLevel()) {
-        // Progress to next level
+        // Progress to next level - reset killed enemies for new level
         GameState.currentWorld = 'real';
         GameState.inventory = [];
         GameState.cameraX = 0;
+        // Keep score, essence, energy, and usable items!
         Player.init();
         spawnEnemies();
         updateUI();
@@ -1287,6 +1599,14 @@ function completeLevel() {
             GameState.inventory = [];
             GameState.cameraX = 0;
             GameState.health = GameState.maxHealth;
+            // Reset all progress on game restart
+            GameState.score = 0;
+            GameState.killedEnemies = { real: {}, dream: {} };
+            GameState.dreamEssence = 0;
+            GameState.realEnergy = 0;
+            GameState.usableItems = [];
+            GameState.powerBoostTimer = 0;
+            GameState.shieldTimer = 0;
             Player.init();
             spawnEnemies();
             updateUI();
@@ -1299,17 +1619,48 @@ function updateUI() {
     const inventoryEl = document.getElementById('inventory-items');
     const hintsEl = document.getElementById('controls-hint');
 
+    // Score and level
+    const scoreText = `SCORE: ${GameState.score}`;
+
     if (GameState.currentWorld === 'real') {
-        indicator.textContent = `REAL WORLD - Level ${Levels.current}`;
+        indicator.textContent = `REAL WORLD - Level ${Levels.current} | ${scoreText}`;
         indicator.className = 'real-world';
-        hintsEl.textContent = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
     } else {
-        indicator.textContent = `DREAM WORLD - Level ${Levels.current}`;
+        indicator.textContent = `DREAM WORLD - Level ${Levels.current} | ${scoreText}`;
         indicator.className = 'dream-world';
-        hintsEl.textContent = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
     }
 
-    inventoryEl.textContent = GameState.inventory.length > 0 ? GameState.inventory.join(', ') : 'Empty';
+    // Health and resources
+    const hp = `HP: ${'❤'.repeat(GameState.health)}${'♡'.repeat(GameState.maxHealth - GameState.health)}`;
+    const essence = GameState.dreamEssence > 0 ? ` | 💜×${GameState.dreamEssence}` : '';
+    const energy = GameState.realEnergy > 0 ? ` | 💚×${GameState.realEnergy}` : '';
+    hintsEl.textContent = hp + essence + energy;
+
+    // Inventory: Keys + Usable items
+    let invText = '';
+
+    // Keys
+    if (GameState.inventory.length > 0) {
+        invText = GameState.inventory.join(', ');
+    }
+
+    // Usable items with keybinds
+    if (GameState.usableItems.length > 0) {
+        const itemNames = GameState.usableItems.map((item, i) => {
+            const name = item === 'power_boost' ? '⭐Power' : '🛡Shield';
+            return `[${i + 1}]${name}`;
+        });
+        invText += (invText ? ' | ' : '') + itemNames.join(' ');
+    }
+
+    // World power hint
+    if (GameState.currentWorld === 'real' && GameState.dreamEssence > 0) {
+        invText += (invText ? ' | ' : '') + '[Z] Use Dream Power';
+    } else if (GameState.currentWorld === 'dream' && GameState.realEnergy > 0) {
+        invText += (invText ? ' | ' : '') + '[Z] Use Real Power';
+    }
+
+    inventoryEl.textContent = invText || 'Empty';
 }
 
 function drawDivider() {
@@ -1331,6 +1682,44 @@ function drawActiveHighlight() {
     ctx.shadowBlur = 0;
 }
 
+function drawPowerUpStatus() {
+    const yBase = GameState.currentWorld === 'real' ? 30 : DREAM_WORLD_Y_OFFSET + 30;
+
+    // Power boost indicator
+    if (GameState.powerBoostTimer > 0) {
+        ctx.fillStyle = 'rgba(255, 136, 0, 0.8)';
+        ctx.fillRect(5, yBase, 80, 16);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px Courier New';
+        ctx.fillText(`POWER ${Math.ceil(GameState.powerBoostTimer / 60)}s`, 10, yBase + 12);
+    }
+
+    // Shield indicator
+    if (GameState.shieldTimer > 0) {
+        ctx.fillStyle = 'rgba(68, 136, 255, 0.8)';
+        ctx.fillRect(5, yBase + (GameState.powerBoostTimer > 0 ? 20 : 0), 80, 16);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px Courier New';
+        ctx.fillText(`SHIELD ${Math.ceil(GameState.shieldTimer / 60)}s`, 10, yBase + 12 + (GameState.powerBoostTimer > 0 ? 20 : 0));
+    }
+
+    // Shield visual effect around player
+    if (GameState.shieldTimer > 0) {
+        const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
+        const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+        const drawX = Player.x - cameraOffset + Player.width / 2;
+        const drawY = Player.y + yOffset + Player.height / 2;
+
+        ctx.strokeStyle = '#4488ff';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5 + Math.sin(Date.now() * 0.01) * 0.3;
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
+}
+
 // ============================================
 // GAME LOOP
 // ============================================
@@ -1339,6 +1728,7 @@ function update() {
     Player.update();
     updateEnemies();
     updateProjectiles();
+    updateDrops();
     checkInteractions();
 }
 
@@ -1349,8 +1739,10 @@ function draw() {
     DreamWorld.draw();
     drawActiveHighlight();
     drawEnemies();
+    drawDrops();
     drawProjectiles();
     Player.draw();
+    drawPowerUpStatus();
 
     // Victory screen overlay
     if (GameState.gameComplete) {
@@ -1384,4 +1776,4 @@ spawnEnemies();
 updateUI();
 gameLoop();
 
-console.log('Dreamworld v1.2 - Smaller Grid Update! 20x20 Real World, UDLR enemies. Arrows/WASD to move, X to shoot');
+console.log('Dreamworld v1.3 - Gameplay Systems Update! Score, item drops, world powers. X=shoot, Z=world power, 1-3=use items');

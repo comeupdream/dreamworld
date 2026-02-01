@@ -1689,42 +1689,25 @@ const Player = {
         } else {
             let dx = 0, dy = 0;
             let moveKey = null;
-            let desiredDir = null;
 
-            // Check each direction with tap/hold logic
+            // Check each direction with tap/hold logic - turn and move together in real world
             if (canMoveWithKey('ArrowUp') || canMoveWithKey('KeyW')) {
-                desiredDir = 'up';
-                dy = -1;
+                dy = -1; this.facingY = -1; this.facingDir = 'up';
                 moveKey = GameState.keysPressed['ArrowUp'] ? 'ArrowUp' : 'KeyW';
             } else if (canMoveWithKey('ArrowDown') || canMoveWithKey('KeyS')) {
-                desiredDir = 'down';
-                dy = 1;
+                dy = 1; this.facingY = 1; this.facingDir = 'down';
                 moveKey = GameState.keysPressed['ArrowDown'] ? 'ArrowDown' : 'KeyS';
             } else if (canMoveWithKey('ArrowLeft') || canMoveWithKey('KeyA')) {
-                desiredDir = 'left';
-                dx = -1;
+                dx = -1; this.facing = -1; this.facingY = 0; this.facingDir = 'left';
                 moveKey = GameState.keysPressed['ArrowLeft'] ? 'ArrowLeft' : 'KeyA';
             } else if (canMoveWithKey('ArrowRight') || canMoveWithKey('KeyD')) {
-                desiredDir = 'right';
-                dx = 1;
+                dx = 1; this.facing = 1; this.facingY = 0; this.facingDir = 'right';
                 moveKey = GameState.keysPressed['ArrowRight'] ? 'ArrowRight' : 'KeyD';
             }
 
-            if (desiredDir && moveKey) {
-                // Check if we need to turn first
-                if (this.facingDir !== desiredDir) {
-                    // Just turn to face the new direction, don't move
-                    this.facingDir = desiredDir;
-                    if (desiredDir === 'up') { this.facingY = -1; this.facing = 0; }
-                    else if (desiredDir === 'down') { this.facingY = 1; this.facing = 0; }
-                    else if (desiredDir === 'left') { this.facing = -1; this.facingY = 0; }
-                    else if (desiredDir === 'right') { this.facing = 1; this.facingY = 0; }
-                    markKeyMoved(moveKey); // Consume the key press
-                } else {
-                    // Already facing this direction, try to move
-                    if (this.tryMove(dx, dy, Levels.getReal())) {
-                        markKeyMoved(moveKey);
-                    }
+            if ((dx !== 0 || dy !== 0) && moveKey) {
+                if (this.tryMove(dx, dy, Levels.getReal())) {
+                    markKeyMoved(moveKey);
                 }
             }
         }

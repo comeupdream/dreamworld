@@ -1,11 +1,9 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.3 - Gameplay Systems Update
-// - Persistent enemy deaths
-// - Score/points system
-// - Enemy item drops
-// - Dream Essence mechanic (world linking)
-// - Usable inventory items
+// v1.4 - 8-Bit Audio Update
+// - Procedural chiptune music track
+// - Laser pew pew sounds
+// - Hit, pickup, damage, portal SFX
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
@@ -24,6 +22,403 @@ canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
 
 const DREAM_WORLD_Y_OFFSET = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT;
+
+// ============================================
+// 8-BIT AUDIO SYSTEM
+// ============================================
+
+const Audio8Bit = {
+    ctx: null,
+    musicGain: null,
+    sfxGain: null,
+    musicPlaying: false,
+    musicNodes: [],
+
+    init() {
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Master gains
+            this.musicGain = this.ctx.createGain();
+            this.musicGain.gain.value = 0.3;
+            this.musicGain.connect(this.ctx.destination);
+
+            this.sfxGain = this.ctx.createGain();
+            this.sfxGain.gain.value = 0.4;
+            this.sfxGain.connect(this.ctx.destination);
+        } catch (e) {
+            console.log('Web Audio not supported');
+        }
+    },
+
+    resume() {
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+
+    // Laser pew pew sound
+    playLaser(isFireball = false) {
+        if (!this.ctx) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        if (isFireball) {
+            // Fireball - deeper, more whooshy
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.15);
+        } else {
+            // Bullet - classic pew pew
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(220, this.ctx.currentTime + 0.1);
+        }
+
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.15);
+    },
+
+    // Enemy hit sound
+    playHit() {
+        if (!this.ctx) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
+
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.2);
+    },
+
+    // Pickup sound
+    playPickup() {
+        if (!this.ctx) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        // Rising arpeggio
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(554, this.ctx.currentTime + 0.05);
+        osc.frequency.setValueAtTime(659, this.ctx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.25);
+    },
+
+    // Damage sound
+    playDamage() {
+        if (!this.ctx) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(100, this.ctx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(80, this.ctx.currentTime + 0.2);
+
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.3);
+    },
+
+    // Portal/teleport sound
+    playPortal() {
+        if (!this.ctx) return;
+        this.resume();
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        // Warping sweep
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.2);
+        osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.4);
+
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.5);
+    },
+
+    // 8-bit retro music track
+    startMusic() {
+        if (!this.ctx || this.musicPlaying) return;
+        this.resume();
+        this.musicPlaying = true;
+
+        // Music parameters
+        const bpm = 140;
+        const beatTime = 60 / bpm;
+        const barTime = beatTime * 4;
+
+        // Note frequencies (C major / A minor pentatonic vibes)
+        const notes = {
+            C3: 130.81, D3: 146.83, E3: 164.81, G3: 196.00, A3: 220.00,
+            C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00,
+            C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880.00
+        };
+
+        // Melody pattern (plays over 8 bars, then loops)
+        const melody = [
+            // Bar 1-2: Main theme
+            { note: 'E4', start: 0, dur: 0.5 },
+            { note: 'G4', start: 0.5, dur: 0.5 },
+            { note: 'A4', start: 1, dur: 0.5 },
+            { note: 'G4', start: 1.5, dur: 0.5 },
+            { note: 'E4', start: 2, dur: 1 },
+            { note: 'D4', start: 3, dur: 0.5 },
+            { note: 'C4', start: 3.5, dur: 0.5 },
+            // Bar 3-4
+            { note: 'D4', start: 4, dur: 0.5 },
+            { note: 'E4', start: 4.5, dur: 0.5 },
+            { note: 'G4', start: 5, dur: 1 },
+            { note: 'A4', start: 6, dur: 0.5 },
+            { note: 'G4', start: 6.5, dur: 0.5 },
+            { note: 'E4', start: 7, dur: 1 },
+            // Bar 5-6: Variation
+            { note: 'A4', start: 8, dur: 0.5 },
+            { note: 'G4', start: 8.5, dur: 0.5 },
+            { note: 'E4', start: 9, dur: 0.5 },
+            { note: 'D4', start: 9.5, dur: 0.5 },
+            { note: 'C4', start: 10, dur: 1 },
+            { note: 'D4', start: 11, dur: 0.5 },
+            { note: 'E4', start: 11.5, dur: 0.5 },
+            // Bar 7-8
+            { note: 'G4', start: 12, dur: 1 },
+            { note: 'A4', start: 13, dur: 0.5 },
+            { note: 'C5', start: 13.5, dur: 0.5 },
+            { note: 'A4', start: 14, dur: 1 },
+            { note: 'G4', start: 15, dur: 1 },
+        ];
+
+        // Bass pattern (2 bar loop)
+        const bass = [
+            { note: 'C3', start: 0, dur: 0.25 },
+            { note: 'C3', start: 0.5, dur: 0.25 },
+            { note: 'G3', start: 1, dur: 0.25 },
+            { note: 'G3', start: 1.5, dur: 0.25 },
+            { note: 'A3', start: 2, dur: 0.25 },
+            { note: 'A3', start: 2.5, dur: 0.25 },
+            { note: 'G3', start: 3, dur: 0.25 },
+            { note: 'E3', start: 3.5, dur: 0.25 },
+        ];
+
+        // Drum pattern (1 bar loop) - using noise
+        const drums = [
+            { type: 'kick', start: 0 },
+            { type: 'hat', start: 0.25 },
+            { type: 'snare', start: 0.5 },
+            { type: 'hat', start: 0.75 },
+            { type: 'kick', start: 1 },
+            { type: 'hat', start: 1.25 },
+            { type: 'snare', start: 1.5 },
+            { type: 'hat', start: 1.75 },
+        ];
+
+        const loopLength = 16 * beatTime; // 16 beats = 8 bars at 2 beats per bar... wait, 4 beats per bar
+        // Actually 16 beats = 4 bars. Let me recalc: at 140bpm, 16 beats takes ~6.86 seconds
+
+        const scheduleMusic = () => {
+            if (!this.musicPlaying) return;
+
+            const now = this.ctx.currentTime;
+
+            // Schedule melody
+            melody.forEach(n => {
+                this.playNote(notes[n.note], now + n.start * beatTime, n.dur * beatTime, 'square', 0.15);
+            });
+
+            // Schedule bass (loop 4 times for 16 beats)
+            for (let i = 0; i < 4; i++) {
+                bass.forEach(n => {
+                    this.playNote(notes[n.note], now + (n.start + i * 4) * beatTime, n.dur * beatTime, 'triangle', 0.2);
+                });
+            }
+
+            // Schedule drums (loop 8 times for 16 beats)
+            for (let i = 0; i < 8; i++) {
+                drums.forEach(d => {
+                    this.playDrum(d.type, now + (d.start + i * 2) * beatTime);
+                });
+            }
+
+            // Schedule next loop
+            setTimeout(() => scheduleMusic(), (loopLength - 0.1) * 1000);
+        };
+
+        scheduleMusic();
+    },
+
+    playNote(freq, startTime, duration, type, volume) {
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.value = freq;
+
+        osc.connect(gain);
+        gain.connect(this.musicGain);
+
+        // Envelope
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+        gain.gain.setValueAtTime(volume, startTime + duration - 0.02);
+        gain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+    },
+
+    playDrum(type, startTime) {
+        if (!this.ctx) return;
+
+        if (type === 'kick') {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.connect(gain);
+            gain.connect(this.musicGain);
+
+            osc.frequency.setValueAtTime(150, startTime);
+            osc.frequency.exponentialRampToValueAtTime(40, startTime + 0.1);
+
+            gain.gain.setValueAtTime(0.4, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.15);
+        } else if (type === 'snare') {
+            // Noise burst
+            const bufferSize = this.ctx.sampleRate * 0.1;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = this.ctx.createBufferSource();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+
+            noise.buffer = buffer;
+            filter.type = 'highpass';
+            filter.frequency.value = 1000;
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.musicGain);
+
+            gain.gain.setValueAtTime(0.3, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+
+            noise.start(startTime);
+            noise.stop(startTime + 0.1);
+        } else if (type === 'hat') {
+            // Short noise
+            const bufferSize = this.ctx.sampleRate * 0.05;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = this.ctx.createBufferSource();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+
+            noise.buffer = buffer;
+            filter.type = 'highpass';
+            filter.frequency.value = 5000;
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.musicGain);
+
+            gain.gain.setValueAtTime(0.1, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.05);
+
+            noise.start(startTime);
+            noise.stop(startTime + 0.05);
+        }
+    },
+
+    stopMusic() {
+        this.musicPlaying = false;
+    },
+
+    setMusicVolume(vol) {
+        if (this.musicGain) this.musicGain.gain.value = vol;
+    },
+
+    setSfxVolume(vol) {
+        if (this.sfxGain) this.sfxGain.gain.value = vol;
+    }
+};
+
+// Initialize audio on first user interaction
+document.addEventListener('click', () => {
+    if (!Audio8Bit.ctx) {
+        Audio8Bit.init();
+        Audio8Bit.startMusic();
+    } else {
+        Audio8Bit.resume();
+        if (!Audio8Bit.musicPlaying) Audio8Bit.startMusic();
+    }
+}, { once: true });
+
+document.addEventListener('keydown', () => {
+    if (!Audio8Bit.ctx) {
+        Audio8Bit.init();
+        Audio8Bit.startMusic();
+    } else {
+        Audio8Bit.resume();
+        if (!Audio8Bit.musicPlaying) Audio8Bit.startMusic();
+    }
+}, { once: true });
 
 // ============================================
 // LEVEL DATA - Just Level 1 for now
@@ -377,6 +772,9 @@ const Player = {
             life: 60,
             powered: GameState.powerBoostTimer > 0 // Track if this was a powered shot
         });
+
+        // Play laser sound
+        Audio8Bit.playLaser(GameState.currentWorld === 'dream');
     },
 
     updateTopDown() {
@@ -630,6 +1028,7 @@ const Player = {
 
         GameState.health--;
         GameState.invincible = 60; // 1 second invincibility
+        Audio8Bit.playDamage();
         if (GameState.health <= 0) {
             // Reset level (but keep killed enemies tracked)
             GameState.health = GameState.maxHealth;
@@ -997,6 +1396,7 @@ function updateProjectiles() {
                 spawnDrop(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.type);
 
                 GameState.enemies.splice(i, 1);
+                Audio8Bit.playHit();
                 updateUI();
                 return false;
             }
@@ -1091,6 +1491,7 @@ function collectDrop(drop) {
             }
             break;
     }
+    Audio8Bit.playPickup();
     updateUI();
 }
 
@@ -1536,6 +1937,7 @@ function switchWorld() {
     GameState.portalCooldown = 60;
     GameState.projectiles = [];
     GameState.drops = []; // Clear drops when switching worlds
+    Audio8Bit.playPortal();
 
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';

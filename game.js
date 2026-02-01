@@ -856,29 +856,62 @@ document.addEventListener('keydown', () => {
 
 const LevelTemplates = {
     realWorld: {
-        // 20x20 grids
-        1: [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,4,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,3,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        ],
+        // 20x20 grids - tile types: 0=floor, 1=wall, 2=portal, 3=goal, 4=key, 5=unlocked door, 6=exit, 7=room door
+        1: {
+            rooms: {
+                // Room 0: Starting room with door to portal room
+                0: [
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                ],
+                // Room 1: Portal room (door back + portal + goal)
+                1: [
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                ]
+            },
+            // Define door connections: which room each door leads to and spawn position
+            doors: {
+                0: { targetRoom: 1, spawnX: 2, spawnY: 1 },  // Door in room 0 goes to room 1
+                1: { targetRoom: 0, spawnX: 17, spawnY: 9 }  // Door in room 1 goes back to room 0
+            }
+        },
         2: [
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
             [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,4,0,1],
@@ -1174,12 +1207,43 @@ const Levels = {
     current: 1,
     maxLevel: 6,
     realWorld: null,
+    realWorldRooms: {}, // Store all rooms for current level
+    doorConnections: {}, // Store door connection info
     dreamWorld: null,
 
     loadLevel(num) {
         this.current = num;
-        this.realWorld = JSON.parse(JSON.stringify(LevelTemplates.realWorld[num]));
+        // Load all real world rooms for this level
+        const template = LevelTemplates.realWorld[num];
+        if (template.rooms) {
+            // Multi-room level
+            this.realWorldRooms = {};
+            for (const roomId in template.rooms) {
+                this.realWorldRooms[roomId] = JSON.parse(JSON.stringify(template.rooms[roomId]));
+            }
+            this.realWorld = this.realWorldRooms[0]; // Start in room 0
+            this.doorConnections = template.doors || {};
+        } else {
+            // Legacy single-room level
+            this.realWorld = JSON.parse(JSON.stringify(template));
+            this.realWorldRooms = { 0: this.realWorld };
+            this.doorConnections = {};
+        }
         this.dreamWorld = JSON.parse(JSON.stringify(LevelTemplates.dreamWorld[num]));
+        GameState.currentRoom = 0;
+    },
+
+    switchRoom(roomId) {
+        if (this.realWorldRooms[roomId]) {
+            this.realWorld = this.realWorldRooms[roomId];
+            GameState.currentRoom = roomId;
+            return true;
+        }
+        return false;
+    },
+
+    getDoorConnection(fromRoom) {
+        return this.doorConnections[fromRoom] || null;
     },
 
     getReal() { return this.realWorld; },
@@ -1203,6 +1267,7 @@ const Levels = {
 const GameState = {
     screenState: 'title', // 'title', 'playing', 'paused'
     currentWorld: 'real',
+    currentRoom: 0, // Track which room player is in (0 = main, 1 = portal room)
     inventory: [],
     keysPressed: {},
     portalCooldown: 0,
@@ -4095,6 +4160,31 @@ const RealWorld = {
                 ctx.fillStyle = '#331400';
                 ctx.fillRect(px + 6*s, py + 2, TILE_SIZE - 12*s, TILE_SIZE - 2);
                 break;
+            case 6:
+                // Goal/Exit - green glowing tile
+                ctx.fillStyle = '#00aa44';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#00ff66';
+                const exitPulse = 4*s + Math.sin(Date.now() / 300) * 2*s;
+                ctx.beginPath();
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, exitPulse, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 7:
+                // Room door - wooden door with handle
+                ctx.fillStyle = '#663300'; // Dark wood frame
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#995522'; // Wood door
+                ctx.fillRect(px + 3, py + 2, TILE_SIZE - 6, TILE_SIZE - 2);
+                ctx.fillStyle = '#553311'; // Door details
+                ctx.fillRect(px + 5, py + 4, TILE_SIZE - 10, 4);
+                ctx.fillRect(px + 5, py + TILE_SIZE - 10, TILE_SIZE - 10, 4);
+                // Door handle
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(px + TILE_SIZE - 8, py + TILE_SIZE/2, 3, 0, Math.PI * 2);
+                ctx.fill();
+                break;
         }
     }
 };
@@ -4275,10 +4365,36 @@ function checkInteractions() {
                         reachGoal();
                         return;
                     }
+                    // Room door (tile 7) - transition to another room
+                    if (tile === 7) {
+                        enterRoomDoor();
+                        return;
+                    }
                 }
             }
         }
     }
+}
+
+// Handle room-to-room door transition
+function enterRoomDoor() {
+    const doorInfo = Levels.getDoorConnection(GameState.currentRoom);
+    if (!doorInfo) return;
+
+    // Switch to target room
+    Levels.switchRoom(doorInfo.targetRoom);
+
+    // Move player to spawn position in new room
+    Player.gridX = doorInfo.spawnX;
+    Player.gridY = doorInfo.spawnY;
+    Player.x = Player.gridX * TILE_SIZE + 2;
+    Player.y = Player.gridY * TILE_SIZE + 2;
+    Player.isMoving = false;
+
+    // Clear projectiles when changing rooms
+    GameState.projectiles = [];
+
+    Audio8Bit.playPortal();
 }
 
 function rectsOverlap(a, b) {

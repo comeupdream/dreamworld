@@ -5592,7 +5592,7 @@ function updateUI() {
     const scoreText = `SCORE: ${GameState.score} | 🪙${GameState.coins}`;
 
     if (GameState.currentWorld === 'real') {
-        indicator.textContent = `REAL WORLD - Level ${Levels.current} | ${scoreText}`;
+        indicator.textContent = `Level ${Levels.current} - Room ${GameState.currentRoom} | ${scoreText}`;
         indicator.className = 'real-world';
     } else {
         indicator.textContent = `DREAM WORLD - Level ${Levels.current} | ${scoreText}`;

@@ -460,6 +460,10 @@
         let zoom = 1;
         let worldType = 'real'; // 'real' or 'dream'
 
+        // Dream World viewport dimensions (matches game)
+        const DREAM_VIEWPORT_TILES_X = 23;  // ~560px / 24px
+        const DREAM_VIEWPORT_TILES_Y = 14;  // ~336px / 24px
+
         // Tile definitions
         const TILES = {
             real: [
@@ -814,9 +818,125 @@
                 ctx.stroke();
             }
 
+            // Dream World: Draw viewport overlay and screen boundaries
+            if (worldType === 'dream') {
+                drawDreamViewportOverlay(tileSize);
+            }
+
             // Draw preview for rect/line tools
             if (rectStart && currentTool === 'rect') {
                 // Preview would go here
+            }
+        }
+
+        // Find portal position in level
+        function findPortalPosition() {
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    if (level[y] && level[y][x] === 2) {
+                        return { x, y, found: true };
+                    }
+                }
+            }
+            return { x: 0, y: gridHeight - 2, found: false };
+        }
+
+        // Draw Dream World viewport overlay
+        function drawDreamViewportOverlay(tileSize) {
+            const portal = findPortalPosition();
+
+            // Calculate viewport position (camera clamps to left edge for left-side portals)
+            let viewportX = 0;
+            let viewportY = 0;
+
+            // Camera tries to center on portal, but clamps to world bounds
+            if (portal.found) {
+                // Center on portal
+                viewportX = portal.x - Math.floor(DREAM_VIEWPORT_TILES_X / 2);
+                viewportY = portal.y - Math.floor(DREAM_VIEWPORT_TILES_Y / 2);
+
+                // Clamp to world bounds
+                viewportX = Math.max(0, Math.min(viewportX, gridWidth - DREAM_VIEWPORT_TILES_X));
+                viewportY = Math.max(0, Math.min(viewportY, gridHeight - DREAM_VIEWPORT_TILES_Y));
+            }
+
+            const vpWidth = Math.min(DREAM_VIEWPORT_TILES_X, gridWidth);
+            const vpHeight = Math.min(DREAM_VIEWPORT_TILES_Y, gridHeight);
+
+            // Draw shaded overlay on areas OUTSIDE the initial viewport
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+
+            // Left of viewport
+            if (viewportX > 0) {
+                ctx.fillRect(0, 0, viewportX * tileSize, gridHeight * tileSize);
+            }
+
+            // Right of viewport
+            if (viewportX + vpWidth < gridWidth) {
+                ctx.fillRect((viewportX + vpWidth) * tileSize, 0,
+                    (gridWidth - viewportX - vpWidth) * tileSize, gridHeight * tileSize);
+            }
+
+            // Above viewport (only in the viewport column range)
+            if (viewportY > 0) {
+                ctx.fillRect(viewportX * tileSize, 0,
+                    vpWidth * tileSize, viewportY * tileSize);
+            }
+
+            // Below viewport (only in the viewport column range)
+            if (viewportY + vpHeight < gridHeight) {
+                ctx.fillRect(viewportX * tileSize, (viewportY + vpHeight) * tileSize,
+                    vpWidth * tileSize, (gridHeight - viewportY - vpHeight) * tileSize);
+            }
+
+            // Draw viewport boundary box
+            ctx.strokeStyle = '#9933ff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(
+                viewportX * tileSize,
+                viewportY * tileSize,
+                vpWidth * tileSize,
+                vpHeight * tileSize
+            );
+
+            // Draw "INITIAL VIEW" label
+            ctx.fillStyle = '#9933ff';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText('INITIAL VIEW', viewportX * tileSize + 5, viewportY * tileSize + 15);
+
+            // Draw screen boundary lines (every 23 tiles)
+            ctx.strokeStyle = 'rgba(255, 102, 0, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+
+            for (let screenX = DREAM_VIEWPORT_TILES_X; screenX < gridWidth; screenX += DREAM_VIEWPORT_TILES_X) {
+                ctx.beginPath();
+                ctx.moveTo(screenX * tileSize, 0);
+                ctx.lineTo(screenX * tileSize, gridHeight * tileSize);
+                ctx.stroke();
+
+                // Label screen numbers
+                ctx.fillStyle = 'rgba(255, 102, 0, 0.8)';
+                ctx.font = 'bold 10px sans-serif';
+                const screenNum = Math.floor(screenX / DREAM_VIEWPORT_TILES_X) + 1;
+                ctx.fillText(`SCREEN ${screenNum}→`, screenX * tileSize + 5, 15);
+            }
+
+            ctx.setLineDash([]); // Reset dash
+
+            // Draw portal marker if found
+            if (portal.found) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    portal.x * tileSize + 2,
+                    portal.y * tileSize + 2,
+                    tileSize - 4,
+                    tileSize - 4
+                );
+                ctx.fillStyle = '#00ff00';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillText('SPAWN', portal.x * tileSize, portal.y * tileSize - 3);
             }
         }
 
@@ -1581,13 +1701,45 @@
                     text: `Room Doors: ${roomDoorCount}`
                 });
             } else {
+                // Dream World validation
+                const portal = findPortalPosition();
                 items.push({
                     valid: portalCount >= 1,
-                    text: `Portal: ${portalCount} (need at least 1)`
+                    text: portal.found ? `Portal: (${portal.x}, ${portal.y})` : 'Portal: Missing!'
                 });
+
+                // Check for exit column on right edge
+                let hasExitColumn = true;
+                for (let y = 0; y < gridHeight; y++) {
+                    if (level[y]?.[gridWidth - 1] !== 6) {
+                        hasExitColumn = false;
+                        break;
+                    }
+                }
                 items.push({
-                    valid: exitCount >= 1 || level.some(row => row[row.length - 1] === 6),
-                    text: `Exit: ${exitCount > 0 ? 'Yes' : 'No'}`
+                    valid: hasExitColumn,
+                    warning: exitCount > 0 && !hasExitColumn,
+                    text: hasExitColumn ? 'Exit Column: Complete (right edge)' : `Exit tiles: ${exitCount} (need full right column)`
+                });
+
+                // Check for ground floor
+                let hasFloor = false;
+                for (let x = 0; x < gridWidth; x++) {
+                    if (level[gridHeight - 1]?.[x] === 1) {
+                        hasFloor = true;
+                        break;
+                    }
+                }
+                items.push({
+                    valid: hasFloor,
+                    warning: !hasFloor,
+                    text: hasFloor ? 'Floor: Has platforms' : 'Floor: No ground (floating level?)'
+                });
+
+                // Show level dimensions for dream world
+                items.push({
+                    valid: true,
+                    text: `Screens: ~${Math.ceil(gridWidth / DREAM_VIEWPORT_TILES_X)} wide`
                 });
             }
 

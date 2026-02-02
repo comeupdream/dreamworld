@@ -1861,7 +1861,7 @@ const LevelTemplates = {
                 { x: 8, y: 37, type: 'patrol', patrol: 'horizontal', range: 6, speed: 1.0, room: 1 },     // Bottom left
                 { x: 25, y: 37, type: 'patrol', patrol: 'horizontal', range: 8, speed: 1.0, room: 1 },    // Bottom middle
                 { x: 36, y: 35, type: 'patrol', patrol: 'vertical', range: 3, speed: 1.0, room: 1 },      // Bottom right corner
-                { x: 10, y: 10, type: 'patrol', patrol: 'vertical', range: 6, speed: 1.0, room: 1 },      // Interior upper corridor
+                { x: 10, y: 8, type: 'patrol', patrol: 'vertical', range: 6, speed: 1.0, room: 1 },      // Interior upper corridor
                 { x: 10, y: 20, type: 'patrol', patrol: 'vertical', range: 6, speed: 1.0, room: 1 },      // Interior middle corridor
                 { x: 3, y: 26, type: 'patrol', patrol: 'horizontal', range: 2, speed: 1.05, room: 1 },    // Near spawn (immediate pressure)
                 { x: 35, y: 3, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.0, room: 1 }      // Portal approach guard
@@ -1905,39 +1905,39 @@ const LevelTemplates = {
         dream: {
             1: [
                 { x: 20, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
-                { x: 40, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 }
+                { x: 38, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 }  // Moved from x=40 to avoid wall at 41
             ],
             2: [
-                { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.4 },
-                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2, variant: 'shadow' },
-                { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 }
+                { x: 15, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.4 },
+                { x: 35, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2, variant: 'shadow' },
+                { x: 55, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 }
             ],
             3: [
                 // Level 3 dream world is the BOSS ARENA - fewer regular enemies
-                { x: 12, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6, variant: 'shadow' },
-                { x: 28, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4, variant: 'shadow' }
+                { x: 12, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6, variant: 'shadow' },
+                { x: 28, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4, variant: 'shadow' }
             ],
             // Level 4: 15% harder than L1
             4: [
-                { x: 18, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
-                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
-                { x: 50, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 }
+                { x: 18, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
+                { x: 35, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
+                { x: 50, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 }
             ],
             // Level 5: 15% harder than L2, introduces Void Orbs
             5: [
-                { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
-                { x: 30, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38, variant: 'shadow' },
-                { x: 45, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
-                { x: 60, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
-                { x: 50, y: 5, type: 'voidorb', patrol: 'horizontal', range: 3, speed: 0.5 }
+                { x: 15, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
+                { x: 30, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38, variant: 'shadow' },
+                { x: 45, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
+                { x: 60, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.61 },
+                { x: 50, y: 7, type: 'voidorb', patrol: 'horizontal', range: 3, speed: 0.5 }  // y: 5→7 for row shift
             ],
             // Level 6: Boss gauntlet - all shadows + void orbs
             6: [
-                { x: 15, y: 10, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
-                { x: 35, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.61, variant: 'shadow' },
-                { x: 55, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.84, variant: 'shadow' },
-                { x: 25, y: 4, type: 'voidorb', patrol: 'horizontal', range: 4, speed: 0.5 },
-                { x: 50, y: 4, type: 'voidorb', patrol: 'horizontal', range: 3, speed: 0.6 }
+                { x: 15, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.84, variant: 'shadow' },
+                { x: 35, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.61, variant: 'shadow' },
+                { x: 55, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.84, variant: 'shadow' },
+                { x: 25, y: 6, type: 'voidorb', patrol: 'horizontal', range: 4, speed: 0.5 },  // y: 4→6 for row shift
+                { x: 50, y: 6, type: 'voidorb', patrol: 'horizontal', range: 3, speed: 0.6 }   // y: 4→6 for row shift
             ]
         }
     },

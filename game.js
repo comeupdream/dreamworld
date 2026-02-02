@@ -46,17 +46,24 @@ const Camera = {
     targetY: 0,
     smoothing: 0.1, // How fast camera catches up (0.1 = smooth, 1 = instant)
 
-    // Get current world dimensions based on which world is active
+    // Get current world dimensions based on actual level size
     getWorldBounds() {
-        if (GameState.currentWorld === 'real') {
+        try {
+            let tiles;
+            if (GameState.currentWorld === 'real') {
+                tiles = Levels.getReal();
+            } else {
+                tiles = Levels.getDream();
+            }
+            // Use actual level dimensions
+            const height = tiles.length * TILE_SIZE;
+            const width = (tiles[0]?.length || 20) * TILE_SIZE;
+            return { width, height };
+        } catch (e) {
+            // Fallback to constants if Levels not ready
             return {
                 width: REAL_WORLD_WIDTH * TILE_SIZE,
                 height: REAL_WORLD_HEIGHT_TILES * TILE_SIZE
-            };
-        } else {
-            return {
-                width: DREAM_WORLD_WIDTH * TILE_SIZE,
-                height: DREAM_WORLD_HEIGHT_TILES * TILE_SIZE
             };
         }
     },

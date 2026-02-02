@@ -1,32 +1,137 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v1.6 - Boss & Enemy Update
-// - Boss system: Nightmare Kuriboh at level 3
-// - Boss has 20 HP, health bar, 3 phases
-// - Shadow ghosts (2 HP, dark with red glow)
-// - Charged shots deal 3x damage
-// - Enemy HP system with hit flash
+// v2.0 - Camera System & World Expansion
+// - Scrolling camera system
+// - Larger worlds (40x40 real, 50x80 dream)
+// - One world visible at a time (fullscreen)
+// - 24px tiles for more visible area
 // ============================================
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game dimensions - smaller tiles, bigger grid
-const TILE_SIZE = 28;
-const REAL_WORLD_TILES = 20;
-const GAME_WIDTH = REAL_WORLD_TILES * TILE_SIZE; // 560px
-const REAL_WORLD_HEIGHT = REAL_WORLD_TILES * TILE_SIZE; // 560px
-const DREAM_WORLD_HEIGHT = 12 * TILE_SIZE; // 336px (12 rows now)
-const DIVIDER_HEIGHT = 8;
-const GAME_HEIGHT = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT + DREAM_WORLD_HEIGHT;
+// Game dimensions - 24px tiles with camera scrolling
+const TILE_SIZE = 24;
+const VIEWPORT_TILES_X = 26;  // How many tiles visible horizontally
+const VIEWPORT_TILES_Y = 26;  // How many tiles visible vertically
+const VIEWPORT_WIDTH = VIEWPORT_TILES_X * TILE_SIZE;  // 624px
+const VIEWPORT_HEIGHT = VIEWPORT_TILES_Y * TILE_SIZE; // 624px
 
-canvas.width = GAME_WIDTH;
-canvas.height = GAME_HEIGHT;
+// World sizes (in tiles)
+const REAL_WORLD_WIDTH = 40;
+const REAL_WORLD_HEIGHT_TILES = 40;
+const DREAM_WORLD_WIDTH = 50;
+const DREAM_WORLD_HEIGHT_TILES = 80;
 
-const DREAM_WORLD_Y_OFFSET = REAL_WORLD_HEIGHT + DIVIDER_HEIGHT;
+// Legacy constants for compatibility
+const GAME_WIDTH = VIEWPORT_WIDTH;
+const GAME_HEIGHT = VIEWPORT_HEIGHT;
+const REAL_WORLD_HEIGHT = VIEWPORT_HEIGHT; // For legacy code
+const DREAM_WORLD_Y_OFFSET = 0; // No longer split screen
+
+canvas.width = VIEWPORT_WIDTH;
+canvas.height = VIEWPORT_HEIGHT;
 
 // Game speed multiplier (0.9 = 10% slower)
 const GAME_SPEED = 0.9;
+
+// ============================================
+// CAMERA SYSTEM
+// ============================================
+
+const Camera = {
+    x: 0,
+    y: 0,
+    targetX: 0,
+    targetY: 0,
+    smoothing: 0.1, // How fast camera catches up (0.1 = smooth, 1 = instant)
+
+    // Get current world dimensions based on which world is active
+    getWorldBounds() {
+        if (GameState.currentWorld === 'real') {
+            return {
+                width: REAL_WORLD_WIDTH * TILE_SIZE,
+                height: REAL_WORLD_HEIGHT_TILES * TILE_SIZE
+            };
+        } else {
+            return {
+                width: DREAM_WORLD_WIDTH * TILE_SIZE,
+                height: DREAM_WORLD_HEIGHT_TILES * TILE_SIZE
+            };
+        }
+    },
+
+    // Update camera to follow player
+    update() {
+        const bounds = this.getWorldBounds();
+
+        // Target position centers player on screen
+        if (GameState.currentWorld === 'real') {
+            this.targetX = Player.x + (TILE_SIZE / 2) - VIEWPORT_WIDTH / 2;
+            this.targetY = Player.y + (TILE_SIZE / 2) - VIEWPORT_HEIGHT / 2;
+        } else {
+            // Dream world uses pixel position
+            this.targetX = Player.x + (Player.width / 2) - VIEWPORT_WIDTH / 2;
+            this.targetY = Player.y + (Player.height / 2) - VIEWPORT_HEIGHT / 2;
+        }
+
+        // Clamp target to world bounds
+        this.targetX = Math.max(0, Math.min(this.targetX, bounds.width - VIEWPORT_WIDTH));
+        this.targetY = Math.max(0, Math.min(this.targetY, bounds.height - VIEWPORT_HEIGHT));
+
+        // Smooth interpolation toward target
+        this.x += (this.targetX - this.x) * this.smoothing;
+        this.y += (this.targetY - this.y) * this.smoothing;
+
+        // Snap if very close (prevents jitter)
+        if (Math.abs(this.x - this.targetX) < 0.5) this.x = this.targetX;
+        if (Math.abs(this.y - this.targetY) < 0.5) this.y = this.targetY;
+    },
+
+    // Instantly center on player (for world switches, level loads)
+    snapToPlayer() {
+        const bounds = this.getWorldBounds();
+
+        if (GameState.currentWorld === 'real') {
+            this.x = Player.x + (TILE_SIZE / 2) - VIEWPORT_WIDTH / 2;
+            this.y = Player.y + (TILE_SIZE / 2) - VIEWPORT_HEIGHT / 2;
+        } else {
+            this.x = Player.x + (Player.width / 2) - VIEWPORT_WIDTH / 2;
+            this.y = Player.y + (Player.height / 2) - VIEWPORT_HEIGHT / 2;
+        }
+
+        // Clamp to bounds
+        this.x = Math.max(0, Math.min(this.x, bounds.width - VIEWPORT_WIDTH));
+        this.y = Math.max(0, Math.min(this.y, bounds.height - VIEWPORT_HEIGHT));
+
+        this.targetX = this.x;
+        this.targetY = this.y;
+    },
+
+    // Convert screen coordinates to world coordinates
+    screenToWorld(screenX, screenY) {
+        return {
+            x: screenX + this.x,
+            y: screenY + this.y
+        };
+    },
+
+    // Convert world coordinates to screen coordinates
+    worldToScreen(worldX, worldY) {
+        return {
+            x: worldX - this.x,
+            y: worldY - this.y
+        };
+    },
+
+    // Check if a rectangle is visible on screen
+    isVisible(x, y, width, height) {
+        return x + width > this.x &&
+               x < this.x + VIEWPORT_WIDTH &&
+               y + height > this.y &&
+               y < this.y + VIEWPORT_HEIGHT;
+    }
+};
 
 // ============================================
 // 8-BIT AUDIO SYSTEM
@@ -2346,13 +2451,12 @@ const Player = {
     },
 
     draw() {
-        let yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-        let cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
+        // Apply camera offset
+        const drawX = this.x - Camera.x;
+        const drawY = this.y - Camera.y;
 
-        const drawX = this.x - cameraOffset;
-        const drawY = this.y + yOffset;
-
-        if (drawX < -this.width || drawX > GAME_WIDTH) return;
+        // Don't draw if off screen
+        if (!Camera.isVisible(this.x, this.y, this.width, this.height)) return;
 
         // Flash when invincible
         if (GameState.invincible > 0 && Math.floor(GameState.invincible / 4) % 2 === 0) return;
@@ -2770,16 +2874,15 @@ function updateEnemies() {
 }
 
 function drawEnemies() {
-    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
-
     GameState.enemies.forEach(enemy => {
         if (enemy.world !== GameState.currentWorld) return;
 
-        const drawX = enemy.x - cameraOffset;
-        const drawY = enemy.y + yOffset;
+        // Skip if not visible
+        if (!Camera.isVisible(enemy.x, enemy.y, enemy.width, enemy.height)) return;
 
-        if (drawX < -enemy.width || drawX > GAME_WIDTH) return;
+        // Apply camera offset
+        const drawX = enemy.x - Camera.x;
+        const drawY = enemy.y - Camera.y;
 
         // Decrement hit flash
         if (enemy.hitFlash > 0) enemy.hitFlash--;
@@ -3455,14 +3558,12 @@ function updateBoss() {
 
 // Draw Void Specter - plasma orb with electric tentacles
 function drawVoidSpecter(boss) {
-    const yOffset = DREAM_WORLD_Y_OFFSET;
-    const cameraOffset = GameState.cameraX;
-
-    const drawX = boss.x - cameraOffset;
-    const drawY = boss.y + yOffset;
-
     // Skip if off screen
-    if (drawX < -boss.width - 50 || drawX > GAME_WIDTH + boss.width + 50) return;
+    if (!Camera.isVisible(boss.x - 50, boss.y - 50, boss.width + 100, boss.height + 100)) return;
+
+    // Apply camera offset
+    const drawX = boss.x - Camera.x;
+    const drawY = boss.y - Camera.y;
 
     // Decrement hit flash
     if (boss.hitFlash > 0) boss.hitFlash--;
@@ -3711,14 +3812,12 @@ function drawBoss() {
         return;
     }
 
-    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
-
-    const drawX = boss.x - cameraOffset;
-    const drawY = boss.y + yOffset;
-
     // Skip if off screen
-    if (drawX < -boss.width || drawX > GAME_WIDTH + boss.width) return;
+    if (!Camera.isVisible(boss.x, boss.y, boss.width, boss.height)) return;
+
+    // Apply camera offset
+    const drawX = boss.x - Camera.x;
+    const drawY = boss.y - Camera.y;
 
     // Decrement hit flash
     if (boss.hitFlash > 0) boss.hitFlash--;
@@ -4096,15 +4195,13 @@ function collectDrop(drop) {
 }
 
 function drawDrops() {
-    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
-
     GameState.drops.forEach(drop => {
-        const bob = Math.sin(Date.now() * 0.005 + drop.bobOffset) * 3;
-        const drawX = drop.x - cameraOffset;
-        const drawY = drop.y + yOffset + bob;
+        // Skip if not visible
+        if (!Camera.isVisible(drop.x - 16, drop.y - 16, 32, 32)) return;
 
-        if (drawX < -16 || drawX > GAME_WIDTH + 16) return;
+        const bob = Math.sin(Date.now() * 0.005 + drop.bobOffset) * 3;
+        const drawX = drop.x - Camera.x;
+        const drawY = drop.y - Camera.y + bob;
 
         switch (drop.type) {
             case 'coin':
@@ -4257,12 +4354,13 @@ function useWorldPower() {
 }
 
 function drawProjectiles() {
-    const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-    const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
-
     GameState.projectiles.forEach(p => {
-        const drawX = p.x - cameraOffset;
-        const drawY = p.y + yOffset;
+        // Skip if not visible
+        if (!Camera.isVisible(p.x - 15, p.y - 15, 30, 30)) return;
+
+        // Apply camera offset
+        const drawX = p.x - Camera.x;
+        const drawY = p.y - Camera.y;
 
         // Dark orb from Void Specter or Void Orb enemies
         if (p.isDarkOrb) {
@@ -4356,23 +4454,26 @@ function drawProjectiles() {
 const RealWorld = {
     draw() {
         const tiles = Levels.getReal();
-        ctx.fillStyle = '#331400'; // Dark orange background (20% lighter)
-        ctx.fillRect(0, 0, GAME_WIDTH, REAL_WORLD_HEIGHT);
 
-        for (let y = 0; y < tiles.length; y++) {
-            for (let x = 0; x < tiles[y].length; x++) {
+        // Fill entire viewport with background
+        ctx.fillStyle = '#331400'; // Dark orange background
+        ctx.fillRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+        // Calculate visible tile range for optimization
+        const startTileX = Math.floor(Camera.x / TILE_SIZE);
+        const startTileY = Math.floor(Camera.y / TILE_SIZE);
+        const endTileX = Math.min(startTileX + VIEWPORT_TILES_X + 1, tiles[0]?.length || 0);
+        const endTileY = Math.min(startTileY + VIEWPORT_TILES_Y + 1, tiles.length);
+
+        // Draw only visible tiles with camera offset
+        for (let y = Math.max(0, startTileY); y < endTileY; y++) {
+            for (let x = Math.max(0, startTileX); x < endTileX; x++) {
                 const tile = tiles[y][x];
-                const px = x * TILE_SIZE;
-                const py = y * TILE_SIZE;
+                const px = x * TILE_SIZE - Camera.x;
+                const py = y * TILE_SIZE - Camera.y;
                 this.drawTile(tile, px, py);
             }
         }
-
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(5, 5, 180, 22);
-        ctx.fillStyle = '#ff9900'; // Bright orange text
-        ctx.font = 'bold 14px Courier New';
-        ctx.fillText(`REAL WORLD - X to shoot`, 10, 20);
     },
 
     drawTile(tile, px, py) {
@@ -4507,43 +4608,50 @@ const RealWorld = {
 const DreamWorld = {
     draw() {
         const tiles = Levels.getDream();
+        const worldHeight = tiles.length * TILE_SIZE;
 
-        const gradient = ctx.createLinearGradient(0, DREAM_WORLD_Y_OFFSET, 0, GAME_HEIGHT);
+        // Gradient background that fills viewport
+        const gradient = ctx.createLinearGradient(0, 0, 0, VIEWPORT_HEIGHT);
         gradient.addColorStop(0, '#0a0515');
         gradient.addColorStop(0.5, '#1a0a2e');
         gradient.addColorStop(1, '#2a1a4a');
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, DREAM_WORLD_Y_OFFSET, GAME_WIDTH, DREAM_WORLD_HEIGHT);
+        ctx.fillRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
-        // Stars
+        // Parallax stars (move slower than camera for depth)
         ctx.fillStyle = '#ffffff';
-        for (let i = 0; i < 40; i++) {
-            const baseX = (i * 73) % (GAME_WIDTH * 2);
-            const x = (baseX - GameState.cameraX * 0.3 + GAME_WIDTH) % GAME_WIDTH;
-            const y = DREAM_WORLD_Y_OFFSET + (i * 31) % (DREAM_WORLD_HEIGHT - 40);
+        for (let i = 0; i < 80; i++) {
+            const baseX = (i * 73) % (DREAM_WORLD_WIDTH * TILE_SIZE);
+            const baseY = (i * 47) % worldHeight;
+            const parallax = 0.3; // Stars move at 30% of camera speed
+            const x = baseX - Camera.x * parallax;
+            const y = baseY - Camera.y * parallax;
+            // Wrap stars
+            const wrappedX = ((x % VIEWPORT_WIDTH) + VIEWPORT_WIDTH) % VIEWPORT_WIDTH;
+            const wrappedY = ((y % VIEWPORT_HEIGHT) + VIEWPORT_HEIGHT) % VIEWPORT_HEIGHT;
             const twinkle = Math.sin(Date.now() * 0.005 + i) * 0.5 + 0.5;
             ctx.globalAlpha = twinkle * 0.8;
-            ctx.fillRect(x, y, (i % 3) + 1, (i % 3) + 1);
+            ctx.fillRect(wrappedX, wrappedY, (i % 3) + 1, (i % 3) + 1);
         }
         ctx.globalAlpha = 1;
 
-        const startTile = Math.floor(GameState.cameraX / TILE_SIZE);
-        const endTile = Math.ceil((GameState.cameraX + GAME_WIDTH) / TILE_SIZE) + 1;
+        // Calculate visible tile range
+        const startTileX = Math.floor(Camera.x / TILE_SIZE);
+        const startTileY = Math.floor(Camera.y / TILE_SIZE);
+        const endTileX = Math.min(startTileX + VIEWPORT_TILES_X + 1, tiles[0]?.length || 0);
+        const endTileY = Math.min(startTileY + VIEWPORT_TILES_Y + 1, tiles.length);
 
-        for (let y = 0; y < tiles.length; y++) {
-            for (let x = startTile; x < Math.min(endTile, tiles[y].length); x++) {
-                const tile = tiles[y][x];
-                const px = x * TILE_SIZE - GameState.cameraX;
-                const py = y * TILE_SIZE + DREAM_WORLD_Y_OFFSET;
-                this.drawTile(tile, px, py);
+        // Draw only visible tiles with camera offset
+        for (let y = Math.max(0, startTileY); y < endTileY; y++) {
+            for (let x = Math.max(0, startTileX); x < endTileX; x++) {
+                if (x < tiles[y].length) {
+                    const tile = tiles[y][x];
+                    const px = x * TILE_SIZE - Camera.x;
+                    const py = y * TILE_SIZE - Camera.y;
+                    this.drawTile(tile, px, py);
+                }
             }
         }
-
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(5, DREAM_WORLD_Y_OFFSET + 5, 200, 22);
-        ctx.fillStyle = '#DDA0DD';
-        ctx.font = 'bold 14px Courier New';
-        ctx.fillText(`DREAM WORLD - X for fireball`, 10, DREAM_WORLD_Y_OFFSET + 20);
 
         if (GameState.nearDoor && GameState.currentWorld === 'dream') {
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
@@ -4790,15 +4898,14 @@ function switchWorld() {
 
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';
-        Player.gridX = 1;
-        Player.gridY = 1;
-        Player.x = Player.gridX * TILE_SIZE + 2;
-        Player.y = Player.gridY * TILE_SIZE + 2;
+        // Spawn at bottom of dream world (ground level)
+        const dreamTiles = Levels.getDream();
+        Player.x = 2 * TILE_SIZE;
+        Player.y = (dreamTiles.length - 3) * TILE_SIZE; // Near bottom
         Player.isMoving = false;
         Player.isJumping = false;
         Player.isFalling = false;
         Player.facing = 1;
-        GameState.cameraX = 0;
 
         // Despawn boss when leaving real world (unless defeated)
         if (GameState.boss && !GameState.bossDefeated[Levels.current]) {
@@ -4815,8 +4922,9 @@ function switchWorld() {
         }
     } else {
         GameState.currentWorld = 'real';
-        Player.gridX = 12;
-        Player.gridY = 12;
+        // Spawn at center-ish of real world
+        Player.gridX = 20;
+        Player.gridY = 20;
         Player.x = Player.gridX * TILE_SIZE + 2;
         Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
@@ -4829,6 +4937,7 @@ function switchWorld() {
         }
     }
     spawnEnemies(); // Will now respect killed enemies tracker
+    Camera.snapToPlayer(); // Instantly center camera on new position
     updateUI();
 }
 
@@ -4886,10 +4995,10 @@ function showMessage(text, duration) {
 function startNextLevel() {
     GameState.currentWorld = 'real';
     GameState.inventory = [];
-    GameState.cameraX = 0;
     GameState.lives = 2; // Reset lives for new level
     // Keep score, essence, energy, coins, and usable items!
     Player.init();
+    Camera.snapToPlayer(); // Center camera on player
     spawnEnemies();
     // Boss will spawn when player unlocks it (reaches dream goal then returns)
     updateUI();
@@ -5075,8 +5184,32 @@ function drawActiveHighlight() {
     ctx.shadowBlur = 0;
 }
 
+// Draw world indicator at top of screen
+function drawWorldIndicator() {
+    const isReal = GameState.currentWorld === 'real';
+    const text = isReal ? 'REAL WORLD - X to shoot' : 'DREAM WORLD - X for fireball';
+    const bgColor = isReal ? 'rgba(255, 102, 0, 0.8)' : 'rgba(138, 43, 226, 0.8)';
+    const textColor = isReal ? '#fff' : '#DDA0DD';
+
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(5, 5, 220, 22);
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(6, 6, 218, 20);
+    ctx.fillStyle = textColor;
+    ctx.font = 'bold 12px Courier New';
+    ctx.fillText(text, 12, 20);
+
+    // Show level and room info
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(VIEWPORT_WIDTH - 105, 5, 100, 22);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Courier New';
+    const roomText = isReal ? `L${Levels.current} R${GameState.currentRoom}` : `Level ${Levels.current}`;
+    ctx.fillText(roomText, VIEWPORT_WIDTH - 98, 20);
+}
+
 function drawPowerUpStatus() {
-    const yBase = GameState.currentWorld === 'real' ? 30 : DREAM_WORLD_Y_OFFSET + 30;
+    const yBase = 30; // Fixed position at top
 
     // Power boost indicator - shows 2x DMG + 1.5x SPD
     if (GameState.powerBoostTimer > 0) {
@@ -5172,6 +5305,7 @@ function drawPauseButton() {
 
 function update() {
     Player.update();
+    Camera.update(); // Update camera to follow player
     updateEnemies();
     updateBoss();
     updateProjectiles();
@@ -5180,7 +5314,7 @@ function update() {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.clearRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
     // Handle different screen states
     if (GameState.screenState === 'title') {
@@ -5194,16 +5328,22 @@ function draw() {
         return;
     }
 
-    // Draw game world
-    RealWorld.draw();
-    drawDivider();
-    DreamWorld.draw();
-    drawActiveHighlight();
+    // Draw only the active world (one at a time, fullscreen)
+    if (GameState.currentWorld === 'real') {
+        RealWorld.draw();
+    } else {
+        DreamWorld.draw();
+    }
+
+    // Draw game entities (with camera offset applied in their draw functions)
     drawEnemies();
     drawBoss();
     drawDrops();
     drawProjectiles();
     Player.draw();
+
+    // UI elements (fixed on screen, no camera offset)
+    drawWorldIndicator();
     drawPowerUpStatus();
     drawMessage();
     drawPauseButton();

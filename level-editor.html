@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dreamworld Level Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .sidebar h1 {
+            font-size: 1.4em;
+            color: #ff6600;
+            text-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+            margin-bottom: 5px;
+        }
+
+        .sidebar h2 {
+            font-size: 1em;
+            color: #9933ff;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        /* Tile Palette */
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .tile-btn {
+            aspect-ratio: 1;
+            border: 2px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .tile-btn:hover {
+            border-color: #888;
+            transform: scale(1.05);
+        }
+
+        .tile-btn.selected {
+            border-color: #ff6600;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+        }
+
+        .tile-btn canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .tile-btn .tile-label {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            font-size: 9px;
+            text-align: center;
+            background: rgba(0,0,0,0.7);
+            padding: 2px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-row label {
+            flex: 1;
+            font-size: 0.9em;
+        }
+
+        .control-row input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #222;
+            color: #fff;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6600, #cc4400);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ff8833, #ff6600);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #444;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #555;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00aa44, #007733);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #00cc55, #00aa44);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #cc3333, #aa2222);
+            color: white;
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, #9933ff, #7722cc);
+            color: white;
+        }
+
+        .btn-purple:hover {
+            background: linear-gradient(135deg, #aa44ff, #9933ff);
+        }
+
+        /* Tools */
+        .tools {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            padding: 8px 12px;
+            font-size: 0.85em;
+        }
+
+        .tool-btn.active {
+            background: #ff6600;
+        }
+
+        /* Main Canvas Area */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .canvas-info {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        .canvas-container {
+            flex: 1;
+            overflow: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        #levelCanvas {
+            background: #2a1a0a;
+            cursor: crosshair;
+            display: block;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: auto;
+            border: 2px solid #ff6600;
+        }
+
+        .modal-content h2 {
+            color: #ff6600;
+            margin-bottom: 15px;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 300px;
+            background: #0a0a15;
+            border: 1px solid #444;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 10px;
+            border-radius: 5px;
+            resize: vertical;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: flex-end;
+        }
+
+        /* Validation Panel */
+        .validation {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+
+        .validation-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 0;
+        }
+
+        .validation-item.valid {
+            color: #00ff66;
+        }
+
+        .validation-item.invalid {
+            color: #ff4444;
+        }
+
+        .validation-item.warning {
+            color: #ffaa00;
+        }
+
+        /* World Type Toggle */
+        .world-toggle {
+            display: flex;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #444;
+        }
+
+        .world-toggle button {
+            flex: 1;
+            border-radius: 0;
+            padding: 8px;
+        }
+
+        .world-toggle button.active {
+            background: #ff6600;
+        }
+
+        /* Keyboard shortcuts */
+        .shortcuts {
+            font-size: 0.75em;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .shortcuts kbd {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>Dreamworld Editor</h1>
+
+        <h2>World Type</h2>
+        <div class="world-toggle">
+            <button id="realWorldBtn" class="btn-secondary active" onclick="setWorldType('real')">Real World</button>
+            <button id="dreamWorldBtn" class="btn-secondary" onclick="setWorldType('dream')">Dream World</button>
+        </div>
+
+        <h2>Grid Size</h2>
+        <div class="controls">
+            <div class="control-row">
+                <label>Width:</label>
+                <input type="number" id="gridWidth" value="40" min="10" max="100">
+            </div>
+            <div class="control-row">
+                <label>Height:</label>
+                <input type="number" id="gridHeight" value="40" min="10" max="100">
+            </div>
+            <button class="btn-secondary" onclick="resizeGrid()">Resize Grid</button>
+        </div>
+
+        <h2>Tile Palette</h2>
+        <div class="palette" id="palette"></div>
+
+        <h2>Tools</h2>
+        <div class="tools">
+            <button class="btn-secondary tool-btn active" data-tool="brush" onclick="setTool('brush')">Brush</button>
+            <button class="btn-secondary tool-btn" data-tool="fill" onclick="setTool('fill')">Fill</button>
+            <button class="btn-secondary tool-btn" data-tool="rect" onclick="setTool('rect')">Rectangle</button>
+            <button class="btn-secondary tool-btn" data-tool="line" onclick="setTool('line')">Line</button>
+            <button class="btn-secondary tool-btn" data-tool="erase" onclick="setTool('erase')">Eraser</button>
+        </div>
+
+        <h2>Actions</h2>
+        <div class="controls">
+            <button class="btn-success" onclick="exportLevel()">Export JS Array</button>
+            <button class="btn-purple" onclick="showImportModal()">Import Array</button>
+            <button class="btn-secondary" onclick="clearLevel()">Clear All</button>
+            <button class="btn-secondary" onclick="fillBorder()">Add Wall Border</button>
+            <button class="btn-secondary" onclick="undo()">Undo (Ctrl+Z)</button>
+        </div>
+
+        <h2>Validation</h2>
+        <div class="validation" id="validation"></div>
+
+        <h2>Shortcuts</h2>
+        <div class="shortcuts">
+            <kbd>0-9</kbd> Select tile<br>
+            <kbd>B</kbd> Brush tool<br>
+            <kbd>F</kbd> Fill tool<br>
+            <kbd>R</kbd> Rectangle tool<br>
+            <kbd>L</kbd> Line tool<br>
+            <kbd>E</kbd> Eraser<br>
+            <kbd>Ctrl+Z</kbd> Undo<br>
+            <kbd>Ctrl+S</kbd> Export
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="canvas-header">
+            <div class="canvas-info" id="canvasInfo">Position: (0, 0) | Tile: Floor</div>
+            <div>
+                <button class="btn-secondary" onclick="zoomOut()">Zoom -</button>
+                <span id="zoomLevel">100%</span>
+                <button class="btn-secondary" onclick="zoomIn()">Zoom +</button>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <canvas id="levelCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <h2>Export Level</h2>
+            <p style="margin-bottom: 10px; color: #aaa;">Copy this JavaScript array and paste it into your game.js file:</p>
+            <textarea id="exportOutput" readonly></textarea>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
+                <button class="btn-primary" onclick="closeModal('exportModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <h2>Import Level</h2>
+            <p style="margin-bottom: 10px; color: #aaa;">Paste a JavaScript 2D array (from your game.js) to edit it:</p>
+            <textarea id="importInput" placeholder="Paste array here, e.g.:
+[
+    [1,1,1,1,1],
+    [1,0,0,0,1],
+    [1,0,2,0,1],
+    [1,0,0,0,1],
+    [1,1,1,1,1]
+]"></textarea>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeModal('importModal')">Cancel</button>
+                <button class="btn-success" onclick="importLevel()">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const TILE_SIZE = 24;
+        let gridWidth = 40;
+        let gridHeight = 40;
+        let zoom = 1;
+        let worldType = 'real'; // 'real' or 'dream'
+
+        // Tile definitions
+        const TILES = {
+            real: [
+                { id: 0, name: 'Floor', color: '#2a1a0a' },
+                { id: 1, name: 'Wall', color: '#ff6600' },
+                { id: 2, name: 'Portal', color: '#9933ff' },
+                { id: 3, name: 'Goal Lock', color: '#cc5500' },
+                { id: 4, name: 'Key', color: '#FFD700' },
+                { id: 5, name: 'Open Door', color: '#994400' },
+                { id: 6, name: 'Exit', color: '#00aa44' },
+                { id: 7, name: 'Room Door', color: '#995522' },
+                { id: 8, name: 'Water', color: '#1a4a6e' },
+                { id: 9, name: 'Bridge', color: '#8B4513' },
+                { id: 10, name: 'Locked Door', color: '#6a3a1a' }
+            ],
+            dream: [
+                { id: 0, name: 'Air', color: '#1a0a2a' },
+                { id: 1, name: 'Platform', color: '#4a3a6a' },
+                { id: 2, name: 'Portal', color: '#9933ff' },
+                { id: 3, name: 'Goal', color: '#00aa44' },
+                { id: 4, name: 'Key', color: '#FFD700' },
+                { id: 5, name: 'Spike', color: '#cc3333' },
+                { id: 6, name: 'Exit Wall', color: '#00ff66' },
+                { id: 7, name: 'Chest', color: '#8B4513' },
+                { id: 8, name: 'Lock Chest', color: '#654321' }
+            ]
+        };
+
+        // State
+        let level = [];
+        let selectedTile = 1;
+        let currentTool = 'brush';
+        let isDrawing = false;
+        let history = [];
+        let maxHistory = 50;
+        let rectStart = null;
+        let lineStart = null;
+
+        // Canvas setup
+        const canvas = document.getElementById('levelCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Initialize
+        function init() {
+            createPalette();
+            initLevel();
+            render();
+            validate();
+        }
+
+        function initLevel() {
+            level = [];
+            for (let y = 0; y < gridHeight; y++) {
+                level[y] = [];
+                for (let x = 0; x < gridWidth; x++) {
+                    level[y][x] = 0;
+                }
+            }
+            updateCanvasSize();
+        }
+
+        function updateCanvasSize() {
+            canvas.width = gridWidth * TILE_SIZE * zoom;
+            canvas.height = gridHeight * TILE_SIZE * zoom;
+        }
+
+        // Palette
+        function createPalette() {
+            const palette = document.getElementById('palette');
+            palette.innerHTML = '';
+            const tiles = TILES[worldType];
+
+            tiles.forEach((tile, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'tile-btn' + (index === selectedTile ? ' selected' : '');
+                btn.onclick = () => selectTile(index);
+
+                const tileCanvas = document.createElement('canvas');
+                tileCanvas.width = 48;
+                tileCanvas.height = 48;
+                const tileCtx = tileCanvas.getContext('2d');
+                drawTilePreview(tileCtx, index, 0, 0, 48);
+
+                const label = document.createElement('div');
+                label.className = 'tile-label';
+                label.textContent = `${index}: ${tile.name}`;
+
+                btn.appendChild(tileCanvas);
+                btn.appendChild(label);
+                palette.appendChild(btn);
+            });
+        }
+
+        function selectTile(id) {
+            selectedTile = id;
+            document.querySelectorAll('.tile-btn').forEach((btn, i) => {
+                btn.classList.toggle('selected', i === id);
+            });
+        }
+
+        // Drawing tiles (matching game.js style)
+        function drawTilePreview(ctx, tile, px, py, size) {
+            const s = size / 24;
+            ctx.fillStyle = '#2a1a0a';
+            ctx.fillRect(px, py, size, size);
+
+            if (worldType === 'real') {
+                drawRealTile(ctx, tile, px, py, size, s);
+            } else {
+                drawDreamTile(ctx, tile, px, py, size, s);
+            }
+        }
+
+        function drawRealTile(ctx, tile, px, py, size, s) {
+            switch (tile) {
+                case 0: // Floor
+                    ctx.fillStyle = '#2a1a0a';
+                    ctx.fillRect(px, py, size, size);
+                    break;
+                case 1: // Wall
+                    ctx.fillStyle = '#cc4400';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#ff6600';
+                    ctx.fillRect(px + 1*s, py + 1*s, size - 2*s, size - 2*s);
+                    ctx.fillStyle = '#cc4400';
+                    ctx.fillRect(px + size/2, py, 1*s, size);
+                    ctx.fillRect(px, py + size/2, size, 1*s);
+                    break;
+                case 2: // Portal
+                    ctx.fillStyle = '#9933ff';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#cc66ff';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 6*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 2*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 3: // Goal/Locked door
+                    ctx.fillStyle = '#994400';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#cc5500';
+                    ctx.fillRect(px + 2*s, py + 1*s, size - 4*s, size - 2*s);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2 + 4*s, 4*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 4: // Key
+                    ctx.fillStyle = '#2a1a0a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + 8*s, 5*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillRect(px + size/2 - 2*s, py + 12*s, 4*s, 10*s);
+                    ctx.fillRect(px + size/2, py + 17*s, 5*s, 2*s);
+                    break;
+                case 5: // Open door
+                    ctx.fillStyle = '#994400';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#331400';
+                    ctx.fillRect(px + 5*s, py + 2*s, size - 10*s, size - 2*s);
+                    break;
+                case 6: // Exit
+                    ctx.fillStyle = '#00aa44';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#00ff66';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 5*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 7: // Room door
+                    ctx.fillStyle = '#663300';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#995522';
+                    ctx.fillRect(px + 3*s, py + 2*s, size - 6*s, size - 2*s);
+                    ctx.fillStyle = '#553311';
+                    ctx.fillRect(px + 5*s, py + 4*s, size - 10*s, 3*s);
+                    ctx.fillRect(px + 5*s, py + size - 8*s, size - 10*s, 3*s);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(px + size - 7*s, py + size/2, 2*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 8: // Water
+                    ctx.fillStyle = '#1a4a6e';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#2a6a9e';
+                    ctx.fillRect(px, py + 4*s, size, size - 8*s);
+                    ctx.fillStyle = '#4a9ace';
+                    ctx.fillRect(px + 4*s, py + 8*s, size - 8*s, 3*s);
+                    ctx.fillRect(px + 8*s, py + 14*s, size - 12*s, 2*s);
+                    break;
+                case 9: // Bridge
+                    ctx.fillStyle = '#1a4a6e';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(px, py + 4*s, size, size - 8*s);
+                    ctx.fillStyle = '#654321';
+                    ctx.fillRect(px, py + 8*s, size, 2*s);
+                    ctx.fillRect(px, py + 14*s, size, 2*s);
+                    ctx.fillStyle = '#5a3a1a';
+                    ctx.fillRect(px, py + 2*s, size, 3*s);
+                    ctx.fillRect(px, py + size - 5*s, size, 3*s);
+                    break;
+                case 10: // Locked room door
+                    ctx.fillStyle = '#4a2a0a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#6a3a1a';
+                    ctx.fillRect(px + 3*s, py + 2*s, size - 6*s, size - 2*s);
+                    ctx.fillStyle = '#3a1a0a';
+                    ctx.fillRect(px + 5*s, py + 4*s, size - 10*s, 3*s);
+                    ctx.fillRect(px + 5*s, py + size - 8*s, size - 10*s, 3*s);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(px + size/2 - 4*s, py + size/2 - 2*s, 8*s, 6*s);
+                    ctx.fillStyle = '#DAA520';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2 - 4*s, 4*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#4a2a0a';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2 - 4*s, 2*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+            }
+        }
+
+        function drawDreamTile(ctx, tile, px, py, size, s) {
+            switch (tile) {
+                case 0: // Air
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    break;
+                case 1: // Platform
+                    ctx.fillStyle = '#3a2a5a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#4a3a6a';
+                    ctx.fillRect(px + 1*s, py + 1*s, size - 2*s, 4*s);
+                    ctx.fillStyle = '#2a1a4a';
+                    ctx.fillRect(px + 1*s, py + size - 3*s, size - 2*s, 2*s);
+                    break;
+                case 2: // Portal
+                    ctx.fillStyle = '#9933ff';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#cc66ff';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 6*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 2*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 3: // Goal
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#00ff66';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 6*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 4: // Key
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + 8*s, 5*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillRect(px + size/2 - 2*s, py + 12*s, 4*s, 10*s);
+                    ctx.fillRect(px + size/2, py + 17*s, 5*s, 2*s);
+                    break;
+                case 5: // Spike
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#cc3333';
+                    ctx.beginPath();
+                    ctx.moveTo(px + 2*s, py + size);
+                    ctx.lineTo(px + size/4, py + 4*s);
+                    ctx.lineTo(px + size/2 - 2*s, py + size);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(px + size/2 - 2*s, py + size);
+                    ctx.lineTo(px + size/2, py + 2*s);
+                    ctx.lineTo(px + size/2 + 2*s, py + size);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(px + size/2 + 2*s, py + size);
+                    ctx.lineTo(px + size*3/4, py + 4*s);
+                    ctx.lineTo(px + size - 2*s, py + size);
+                    ctx.fill();
+                    break;
+                case 6: // Exit wall
+                    ctx.fillStyle = '#003322';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#00ff66';
+                    ctx.fillRect(px + 3*s, py + 3*s, size - 6*s, size - 6*s);
+                    break;
+                case 7: // Chest
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(px + 2*s, py + size/2, size - 4*s, size/2 - 2*s);
+                    ctx.fillStyle = '#654321';
+                    ctx.fillRect(px + 1*s, py + size/3, size - 2*s, size/5);
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(px + size/2, py + size/2, 3*s, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case 8: // Locked chest
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    ctx.fillStyle = '#654321';
+                    ctx.fillRect(px + 2*s, py + size/2, size - 4*s, size/2 - 2*s);
+                    ctx.fillStyle = '#4a3215';
+                    ctx.fillRect(px + 1*s, py + 4*s, size - 2*s, size/4);
+                    ctx.fillStyle = '#888';
+                    ctx.fillRect(px + size/2 - 3*s, py + size/2 - 1*s, 6*s, 8*s);
+                    break;
+            }
+        }
+
+        // Render the canvas
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const tileSize = TILE_SIZE * zoom;
+
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    const tile = level[y] ? level[y][x] || 0 : 0;
+                    drawTilePreview(ctx, tile, x * tileSize, y * tileSize, tileSize);
+                }
+            }
+
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= gridWidth; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * tileSize, 0);
+                ctx.lineTo(x * tileSize, gridHeight * tileSize);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= gridHeight; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * tileSize);
+                ctx.lineTo(gridWidth * tileSize, y * tileSize);
+                ctx.stroke();
+            }
+
+            // Draw preview for rect/line tools
+            if (rectStart && currentTool === 'rect') {
+                // Preview would go here
+            }
+        }
+
+        // Tools
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === tool);
+            });
+        }
+
+        function setWorldType(type) {
+            worldType = type;
+            document.getElementById('realWorldBtn').classList.toggle('active', type === 'real');
+            document.getElementById('dreamWorldBtn').classList.toggle('active', type === 'dream');
+
+            // Adjust default size
+            if (type === 'dream') {
+                document.getElementById('gridWidth').value = 60;
+                document.getElementById('gridHeight').value = 20;
+            } else {
+                document.getElementById('gridWidth').value = 40;
+                document.getElementById('gridHeight').value = 40;
+            }
+
+            selectedTile = 1;
+            createPalette();
+            render();
+        }
+
+        // Canvas interaction
+        function getTileCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (TILE_SIZE * zoom));
+            const y = Math.floor((e.clientY - rect.top) / (TILE_SIZE * zoom));
+            return { x: Math.max(0, Math.min(x, gridWidth - 1)), y: Math.max(0, Math.min(y, gridHeight - 1)) };
+        }
+
+        function setTile(x, y, tile) {
+            if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+                if (!level[y]) level[y] = [];
+                level[y][x] = tile;
+            }
+        }
+
+        function saveHistory() {
+            history.push(JSON.parse(JSON.stringify(level)));
+            if (history.length > maxHistory) {
+                history.shift();
+            }
+        }
+
+        function undo() {
+            if (history.length > 0) {
+                level = history.pop();
+                render();
+                validate();
+            }
+        }
+
+        // Flood fill algorithm
+        function floodFill(startX, startY, newTile) {
+            const targetTile = level[startY][startX];
+            if (targetTile === newTile) return;
+
+            const stack = [[startX, startY]];
+            const visited = new Set();
+
+            while (stack.length > 0) {
+                const [x, y] = stack.pop();
+                const key = `${x},${y}`;
+
+                if (visited.has(key)) continue;
+                if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) continue;
+                if (level[y][x] !== targetTile) continue;
+
+                visited.add(key);
+                level[y][x] = newTile;
+
+                stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            }
+        }
+
+        // Draw line (Bresenham)
+        function drawLine(x0, y0, x1, y1, tile) {
+            const dx = Math.abs(x1 - x0);
+            const dy = Math.abs(y1 - y0);
+            const sx = x0 < x1 ? 1 : -1;
+            const sy = y0 < y1 ? 1 : -1;
+            let err = dx - dy;
+
+            while (true) {
+                setTile(x0, y0, tile);
+                if (x0 === x1 && y0 === y1) break;
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x0 += sx; }
+                if (e2 < dx) { err += dx; y0 += sy; }
+            }
+        }
+
+        // Draw rectangle
+        function drawRect(x0, y0, x1, y1, tile, filled = false) {
+            const minX = Math.min(x0, x1);
+            const maxX = Math.max(x0, x1);
+            const minY = Math.min(y0, y1);
+            const maxY = Math.max(y0, y1);
+
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    if (filled || x === minX || x === maxX || y === minY || y === maxY) {
+                        setTile(x, y, tile);
+                    }
+                }
+            }
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const { x, y } = getTileCoords(e);
+            saveHistory();
+
+            if (currentTool === 'brush') {
+                setTile(x, y, selectedTile);
+            } else if (currentTool === 'erase') {
+                setTile(x, y, 0);
+            } else if (currentTool === 'fill') {
+                floodFill(x, y, selectedTile);
+            } else if (currentTool === 'rect' || currentTool === 'line') {
+                rectStart = { x, y };
+            }
+
+            render();
+            validate();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const { x, y } = getTileCoords(e);
+            const tiles = TILES[worldType];
+            const tileName = tiles[level[y]?.[x] || 0]?.name || 'Unknown';
+            document.getElementById('canvasInfo').textContent = `Position: (${x}, ${y}) | Tile: ${tileName}`;
+
+            if (!isDrawing) return;
+
+            if (currentTool === 'brush') {
+                setTile(x, y, selectedTile);
+                render();
+            } else if (currentTool === 'erase') {
+                setTile(x, y, 0);
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+
+            const { x, y } = getTileCoords(e);
+
+            if (currentTool === 'rect' && rectStart) {
+                drawRect(rectStart.x, rectStart.y, x, y, selectedTile, true);
+            } else if (currentTool === 'line' && rectStart) {
+                drawLine(rectStart.x, rectStart.y, x, y, selectedTile);
+            }
+
+            isDrawing = false;
+            rectStart = null;
+            render();
+            validate();
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            const tiles = TILES[worldType];
+
+            if (e.key >= '0' && e.key <= '9') {
+                const num = parseInt(e.key);
+                if (num < tiles.length) {
+                    selectTile(num);
+                }
+            } else if (e.key === 'b') {
+                setTool('brush');
+            } else if (e.key === 'f') {
+                setTool('fill');
+            } else if (e.key === 'r') {
+                setTool('rect');
+            } else if (e.key === 'l') {
+                setTool('line');
+            } else if (e.key === 'e') {
+                setTool('erase');
+            } else if (e.key === 'z' && e.ctrlKey) {
+                e.preventDefault();
+                undo();
+            } else if (e.key === 's' && e.ctrlKey) {
+                e.preventDefault();
+                exportLevel();
+            }
+        });
+
+        // Grid operations
+        function resizeGrid() {
+            const newWidth = parseInt(document.getElementById('gridWidth').value);
+            const newHeight = parseInt(document.getElementById('gridHeight').value);
+
+            if (newWidth < 5 || newHeight < 5 || newWidth > 200 || newHeight > 200) {
+                alert('Grid size must be between 5 and 200');
+                return;
+            }
+
+            saveHistory();
+
+            const newLevel = [];
+            for (let y = 0; y < newHeight; y++) {
+                newLevel[y] = [];
+                for (let x = 0; x < newWidth; x++) {
+                    newLevel[y][x] = (level[y] && level[y][x] !== undefined) ? level[y][x] : 0;
+                }
+            }
+
+            level = newLevel;
+            gridWidth = newWidth;
+            gridHeight = newHeight;
+            updateCanvasSize();
+            render();
+            validate();
+        }
+
+        function clearLevel() {
+            if (confirm('Clear the entire level?')) {
+                saveHistory();
+                initLevel();
+                render();
+                validate();
+            }
+        }
+
+        function fillBorder() {
+            saveHistory();
+            for (let x = 0; x < gridWidth; x++) {
+                setTile(x, 0, 1);
+                setTile(x, gridHeight - 1, 1);
+            }
+            for (let y = 0; y < gridHeight; y++) {
+                setTile(0, y, 1);
+                setTile(gridWidth - 1, y, 1);
+            }
+            render();
+            validate();
+        }
+
+        // Zoom
+        function zoomIn() {
+            zoom = Math.min(zoom + 0.25, 3);
+            updateCanvasSize();
+            render();
+            document.getElementById('zoomLevel').textContent = Math.round(zoom * 100) + '%';
+        }
+
+        function zoomOut() {
+            zoom = Math.max(zoom - 0.25, 0.25);
+            updateCanvasSize();
+            render();
+            document.getElementById('zoomLevel').textContent = Math.round(zoom * 100) + '%';
+        }
+
+        // Export/Import
+        function exportLevel() {
+            let output = '[\n';
+            for (let y = 0; y < gridHeight; y++) {
+                output += '    [';
+                output += level[y].join(',');
+                output += ']' + (y < gridHeight - 1 ? ',' : '') + '\n';
+            }
+            output += ']';
+
+            document.getElementById('exportOutput').value = output;
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        function copyToClipboard() {
+            const textarea = document.getElementById('exportOutput');
+            textarea.select();
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        }
+
+        function showImportModal() {
+            document.getElementById('importInput').value = '';
+            document.getElementById('importModal').classList.add('active');
+        }
+
+        function importLevel() {
+            const input = document.getElementById('importInput').value.trim();
+
+            try {
+                // Try to parse as JSON array
+                const parsed = JSON.parse(input);
+
+                if (!Array.isArray(parsed) || !Array.isArray(parsed[0])) {
+                    throw new Error('Invalid format - must be a 2D array');
+                }
+
+                saveHistory();
+                level = parsed;
+                gridHeight = level.length;
+                gridWidth = level[0].length;
+
+                document.getElementById('gridWidth').value = gridWidth;
+                document.getElementById('gridHeight').value = gridHeight;
+
+                updateCanvasSize();
+                render();
+                validate();
+                closeModal('importModal');
+
+            } catch (err) {
+                alert('Failed to parse level data: ' + err.message);
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Close modal on backdrop click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // Validation
+        function validate() {
+            const validation = document.getElementById('validation');
+            const items = [];
+
+            // Count tiles
+            let portalCount = 0;
+            let keyCount = 0;
+            let lockedDoorCount = 0;
+            let exitCount = 0;
+            let roomDoorCount = 0;
+
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    const tile = level[y]?.[x] || 0;
+                    if (tile === 2) portalCount++;
+                    if (tile === 4) keyCount++;
+                    if (tile === 6) exitCount++;
+                    if (tile === 7) roomDoorCount++;
+                    if (tile === 10) lockedDoorCount++;
+                }
+            }
+
+            // Validation rules
+            if (worldType === 'real') {
+                items.push({
+                    valid: portalCount >= 1,
+                    text: `Portal: ${portalCount} (need at least 1)`
+                });
+                items.push({
+                    valid: keyCount >= lockedDoorCount,
+                    warning: keyCount > 0 && keyCount < lockedDoorCount,
+                    text: `Keys: ${keyCount}, Locked Doors: ${lockedDoorCount}`
+                });
+                items.push({
+                    valid: true,
+                    text: `Room Doors: ${roomDoorCount}`
+                });
+            } else {
+                items.push({
+                    valid: portalCount >= 1,
+                    text: `Portal: ${portalCount} (need at least 1)`
+                });
+                items.push({
+                    valid: exitCount >= 1 || level.some(row => row[row.length - 1] === 6),
+                    text: `Exit: ${exitCount > 0 ? 'Yes' : 'No'}`
+                });
+            }
+
+            // Check border walls
+            let hasBorder = true;
+            for (let x = 0; x < gridWidth && hasBorder; x++) {
+                if (level[0]?.[x] !== 1 || level[gridHeight-1]?.[x] !== 1) hasBorder = false;
+            }
+            for (let y = 0; y < gridHeight && hasBorder; y++) {
+                if (level[y]?.[0] !== 1 || level[y]?.[gridWidth-1] !== 1) hasBorder = false;
+            }
+
+            items.push({
+                valid: hasBorder,
+                warning: !hasBorder,
+                text: hasBorder ? 'Wall border: Complete' : 'Wall border: Missing'
+            });
+
+            validation.innerHTML = items.map(item =>
+                `<div class="validation-item ${item.valid ? 'valid' : (item.warning ? 'warning' : 'invalid')}">
+                    ${item.valid ? '✓' : (item.warning ? '⚠' : '✗')} ${item.text}
+                </div>`
+            ).join('');
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

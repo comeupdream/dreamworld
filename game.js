@@ -1,9 +1,9 @@
 // ============================================
 // DREAMWORLD - A Dual-Perspective Adventure
-// v2.0 - Camera System & World Expansion
-// - Scrolling camera system
-// - Larger worlds (40x40 real, 50x80 dream)
-// - One world visible at a time (fullscreen)
+// v2.1 - Split-Screen with Dual Scrolling Cameras
+// - Split-screen layout (both worlds visible)
+// - Independent scrolling cameras for each world
+// - Larger worlds (40x40 real, taller dream)
 // - 24px tiles for more visible area
 // ============================================
 
@@ -12,131 +12,183 @@ const ctx = canvas.getContext('2d');
 
 // Game dimensions - 24px tiles with camera scrolling
 const TILE_SIZE = 24;
-const VIEWPORT_TILES_X = 26;  // How many tiles visible horizontally
-const VIEWPORT_TILES_Y = 26;  // How many tiles visible vertically
-const VIEWPORT_WIDTH = VIEWPORT_TILES_X * TILE_SIZE;  // 624px
-const VIEWPORT_HEIGHT = VIEWPORT_TILES_Y * TILE_SIZE; // 624px
 
-// World sizes (in tiles)
+// Split-screen viewport dimensions (each world gets half the screen)
+const VIEWPORT_WIDTH = 560;   // Width of each viewport
+const VIEWPORT_HEIGHT = 280;  // Height of each viewport (half of total)
+
+// Total canvas size (split-screen: stacked vertically)
+const GAME_WIDTH = VIEWPORT_WIDTH;
+const GAME_HEIGHT = VIEWPORT_HEIGHT * 2;  // 560 total height for both worlds
+
+// World positions on screen
+const REAL_WORLD_Y_OFFSET = 0;
+const DREAM_WORLD_Y_OFFSET = VIEWPORT_HEIGHT;  // Bottom half
+
+// World sizes (in tiles) - can be larger than viewport due to scrolling
 const REAL_WORLD_WIDTH = 40;
 const REAL_WORLD_HEIGHT_TILES = 40;
-const DREAM_WORLD_WIDTH = 50;
-const DREAM_WORLD_HEIGHT_TILES = 80;
+const DREAM_WORLD_WIDTH = 60;
+const DREAM_WORLD_HEIGHT_TILES = 30;
 
-// Legacy constants for compatibility
-const GAME_WIDTH = VIEWPORT_WIDTH;
-const GAME_HEIGHT = VIEWPORT_HEIGHT;
-const REAL_WORLD_HEIGHT = VIEWPORT_HEIGHT; // For legacy code
-const DREAM_WORLD_Y_OFFSET = 0; // No longer split screen
+// How many tiles visible in each viewport
+const VIEWPORT_TILES_X = Math.ceil(VIEWPORT_WIDTH / TILE_SIZE);   // ~24 tiles
+const VIEWPORT_TILES_Y = Math.ceil(VIEWPORT_HEIGHT / TILE_SIZE);  // ~12 tiles
 
-canvas.width = VIEWPORT_WIDTH;
-canvas.height = VIEWPORT_HEIGHT;
+// Legacy constant for compatibility
+const REAL_WORLD_HEIGHT = VIEWPORT_HEIGHT;
+const DREAM_WORLD_HEIGHT = VIEWPORT_HEIGHT;
+
+canvas.width = GAME_WIDTH;
+canvas.height = GAME_HEIGHT;
 
 // Game speed multiplier (0.9 = 10% slower)
 const GAME_SPEED = 0.9;
 
 // ============================================
-// CAMERA SYSTEM
+// DUAL CAMERA SYSTEM
+// Each world has its own independent camera
 // ============================================
 
-const Camera = {
-    x: 0,
-    y: 0,
-    targetX: 0,
-    targetY: 0,
-    smoothing: 0.1, // How fast camera catches up (0.1 = smooth, 1 = instant)
+// Create a camera factory for reusability
+function createCamera(worldType) {
+    return {
+        x: 0,
+        y: 0,
+        targetX: 0,
+        targetY: 0,
+        smoothing: 0.1,
+        worldType: worldType, // 'real' or 'dream'
 
-    // Get current world dimensions based on actual level size
-    getWorldBounds() {
-        try {
-            let tiles;
-            if (GameState.currentWorld === 'real') {
-                tiles = Levels.getReal();
-            } else {
-                tiles = Levels.getDream();
+        getWorldBounds() {
+            try {
+                let tiles;
+                if (this.worldType === 'real') {
+                    tiles = Levels.getReal();
+                } else {
+                    tiles = Levels.getDream();
+                }
+                const height = tiles.length * TILE_SIZE;
+                const width = (tiles[0]?.length || 20) * TILE_SIZE;
+                return { width, height };
+            } catch (e) {
+                if (this.worldType === 'real') {
+                    return {
+                        width: REAL_WORLD_WIDTH * TILE_SIZE,
+                        height: REAL_WORLD_HEIGHT_TILES * TILE_SIZE
+                    };
+                } else {
+                    return {
+                        width: DREAM_WORLD_WIDTH * TILE_SIZE,
+                        height: DREAM_WORLD_HEIGHT_TILES * TILE_SIZE
+                    };
+                }
             }
-            // Use actual level dimensions
-            const height = tiles.length * TILE_SIZE;
-            const width = (tiles[0]?.length || 20) * TILE_SIZE;
-            return { width, height };
-        } catch (e) {
-            // Fallback to constants if Levels not ready
-            return {
-                width: REAL_WORLD_WIDTH * TILE_SIZE,
-                height: REAL_WORLD_HEIGHT_TILES * TILE_SIZE
-            };
-        }
-    },
+        },
 
-    // Update camera to follow player
+        update(playerX, playerY, playerWidth, playerHeight) {
+            const bounds = this.getWorldBounds();
+
+            // Target position centers player on screen
+            if (this.worldType === 'real') {
+                this.targetX = playerX + (TILE_SIZE / 2) - VIEWPORT_WIDTH / 2;
+                this.targetY = playerY + (TILE_SIZE / 2) - VIEWPORT_HEIGHT / 2;
+            } else {
+                this.targetX = playerX + (playerWidth / 2) - VIEWPORT_WIDTH / 2;
+                this.targetY = playerY + (playerHeight / 2) - VIEWPORT_HEIGHT / 2;
+            }
+
+            // Clamp target to world bounds
+            this.targetX = Math.max(0, Math.min(this.targetX, bounds.width - VIEWPORT_WIDTH));
+            this.targetY = Math.max(0, Math.min(this.targetY, bounds.height - VIEWPORT_HEIGHT));
+
+            // Smooth interpolation toward target
+            this.x += (this.targetX - this.x) * this.smoothing;
+            this.y += (this.targetY - this.y) * this.smoothing;
+
+            // Snap if very close (prevents jitter)
+            if (Math.abs(this.x - this.targetX) < 0.5) this.x = this.targetX;
+            if (Math.abs(this.y - this.targetY) < 0.5) this.y = this.targetY;
+        },
+
+        snapTo(playerX, playerY, playerWidth, playerHeight) {
+            const bounds = this.getWorldBounds();
+
+            if (this.worldType === 'real') {
+                this.x = playerX + (TILE_SIZE / 2) - VIEWPORT_WIDTH / 2;
+                this.y = playerY + (TILE_SIZE / 2) - VIEWPORT_HEIGHT / 2;
+            } else {
+                this.x = playerX + (playerWidth / 2) - VIEWPORT_WIDTH / 2;
+                this.y = playerY + (playerHeight / 2) - VIEWPORT_HEIGHT / 2;
+            }
+
+            this.x = Math.max(0, Math.min(this.x, bounds.width - VIEWPORT_WIDTH));
+            this.y = Math.max(0, Math.min(this.y, bounds.height - VIEWPORT_HEIGHT));
+
+            this.targetX = this.x;
+            this.targetY = this.y;
+        },
+
+        isVisible(x, y, width, height) {
+            return x + width > this.x &&
+                   x < this.x + VIEWPORT_WIDTH &&
+                   y + height > this.y &&
+                   y < this.y + VIEWPORT_HEIGHT;
+        }
+    };
+}
+
+// Two independent cameras
+const RealCamera = createCamera('real');
+const DreamCamera = createCamera('dream');
+
+// Helper to get the active camera based on current world
+function getActiveCamera() {
+    return GameState.currentWorld === 'real' ? RealCamera : DreamCamera;
+}
+
+// Legacy Camera object for backwards compatibility
+const Camera = {
+    get x() { return getActiveCamera().x; },
+    get y() { return getActiveCamera().y; },
+    set x(val) { getActiveCamera().x = val; },
+    set y(val) { getActiveCamera().y = val; },
+
     update() {
-        const bounds = this.getWorldBounds();
-
-        // Target position centers player on screen
+        // Update only the active world's camera
+        const cam = getActiveCamera();
         if (GameState.currentWorld === 'real') {
-            this.targetX = Player.x + (TILE_SIZE / 2) - VIEWPORT_WIDTH / 2;
-            this.targetY = Player.y + (TILE_SIZE / 2) - VIEWPORT_HEIGHT / 2;
+            cam.update(Player.x, Player.y, TILE_SIZE, TILE_SIZE);
         } else {
-            // Dream world uses pixel position
-            this.targetX = Player.x + (Player.width / 2) - VIEWPORT_WIDTH / 2;
-            this.targetY = Player.y + (Player.height / 2) - VIEWPORT_HEIGHT / 2;
+            cam.update(Player.x, Player.y, Player.width, Player.height);
         }
-
-        // Clamp target to world bounds
-        this.targetX = Math.max(0, Math.min(this.targetX, bounds.width - VIEWPORT_WIDTH));
-        this.targetY = Math.max(0, Math.min(this.targetY, bounds.height - VIEWPORT_HEIGHT));
-
-        // Smooth interpolation toward target
-        this.x += (this.targetX - this.x) * this.smoothing;
-        this.y += (this.targetY - this.y) * this.smoothing;
-
-        // Snap if very close (prevents jitter)
-        if (Math.abs(this.x - this.targetX) < 0.5) this.x = this.targetX;
-        if (Math.abs(this.y - this.targetY) < 0.5) this.y = this.targetY;
     },
 
-    // Instantly center on player (for world switches, level loads)
     snapToPlayer() {
-        const bounds = this.getWorldBounds();
-
+        const cam = getActiveCamera();
         if (GameState.currentWorld === 'real') {
-            this.x = Player.x + (TILE_SIZE / 2) - VIEWPORT_WIDTH / 2;
-            this.y = Player.y + (TILE_SIZE / 2) - VIEWPORT_HEIGHT / 2;
+            cam.snapTo(Player.x, Player.y, TILE_SIZE, TILE_SIZE);
         } else {
-            this.x = Player.x + (Player.width / 2) - VIEWPORT_WIDTH / 2;
-            this.y = Player.y + (Player.height / 2) - VIEWPORT_HEIGHT / 2;
+            cam.snapTo(Player.x, Player.y, Player.width, Player.height);
         }
-
-        // Clamp to bounds
-        this.x = Math.max(0, Math.min(this.x, bounds.width - VIEWPORT_WIDTH));
-        this.y = Math.max(0, Math.min(this.y, bounds.height - VIEWPORT_HEIGHT));
-
-        this.targetX = this.x;
-        this.targetY = this.y;
     },
 
-    // Convert screen coordinates to world coordinates
-    screenToWorld(screenX, screenY) {
-        return {
-            x: screenX + this.x,
-            y: screenY + this.y
-        };
+    getWorldBounds() {
+        return getActiveCamera().getWorldBounds();
     },
 
-    // Convert world coordinates to screen coordinates
-    worldToScreen(worldX, worldY) {
-        return {
-            x: worldX - this.x,
-            y: worldY - this.y
-        };
-    },
-
-    // Check if a rectangle is visible on screen
     isVisible(x, y, width, height) {
-        return x + width > this.x &&
-               x < this.x + VIEWPORT_WIDTH &&
-               y + height > this.y &&
-               y < this.y + VIEWPORT_HEIGHT;
+        return getActiveCamera().isVisible(x, y, width, height);
+    },
+
+    screenToWorld(screenX, screenY) {
+        const cam = getActiveCamera();
+        return { x: screenX + cam.x, y: screenY + cam.y };
+    },
+
+    worldToScreen(worldX, worldY) {
+        const cam = getActiveCamera();
+        return { x: worldX - cam.x, y: worldY - cam.y };
     }
 };
 
@@ -968,60 +1020,100 @@ document.addEventListener('keydown', () => {
 
 const LevelTemplates = {
     realWorld: {
-        // 20x20 grids - tile types: 0=floor, 1=wall, 2=portal, 3=goal, 4=key, 5=door, 6=exit, 7=room door, 8=water, 9=bridge, 10=locked door, 11=chest
-        // LEVEL 1: Introduction - 2 rooms, water moat puzzle
+        // Tile types: 0=floor, 1=wall, 2=portal, 3=goal, 4=key, 5=door, 6=exit, 7=room door, 8=water, 9=bridge, 10=locked door, 11=chest
+        // LEVEL 1: Introduction - 40x40 expanded world with water puzzles
         1: {
             rooms: {
-                // Room 0: Starting room with key on accessible path, water as decoration
+                // Room 0: Starting area with key on accessible bridge path
                 0: [
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,1],
-                    [1,0,0,0,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,1],
-                    [1,0,0,0,9,9,9,0,0,4,0,0,9,9,0,0,0,0,0,1],
-                    [1,0,0,0,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,1],
-                    [1,0,0,0,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1],
+                    [1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1],
+                    [1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,1],
+                    [1,0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,9,9,9,9,9,9,0,0,4,0,0,9,9,9,9,9,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
                 ],
-                // Room 1: Portal room with water channel
+                // Room 1: Portal room - larger with more exploration
                 1: [
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-                    [1,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,1],
-                    [1,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,9,9,0,1],
-                    [1,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,1],
-                    [1,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                    [1,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,9,9,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,9,9,9,9,9,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
                 ]
             },
             doors: {
                 0: { targetRoom: 1, spawnX: 2, spawnY: 1 },
-                1: { targetRoom: 0, spawnX: 16, spawnY: 9 }
+                1: { targetRoom: 0, spawnX: 34, spawnY: 18 }
             }
         },
         // LEVEL 2: Lake crossing - 2 rooms with larger water areas
@@ -1373,19 +1465,27 @@ const LevelTemplates = {
         }
     },
     dreamWorld: {
-        // 12 rows tall, longer horizontally
+        // Level 1: Taller dream world with vertical platforming (20 rows tall, 60 wide)
         1: [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,6],
-            [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,4,0,1,1,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,3,6],
-            [0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,6],
-            [0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,3,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
+            [0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6],
             [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,6],
         ],
         2: [
@@ -2458,22 +2558,30 @@ const Player = {
     },
 
     draw() {
-        // Apply camera offset
-        const drawX = this.x - Camera.x;
-        const drawY = this.y - Camera.y;
+        const isReal = GameState.currentWorld === 'real';
+        const cam = isReal ? RealCamera : DreamCamera;
+        const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
+
+        // Apply camera offset + viewport offset
+        const drawX = this.x - cam.x;
+        const drawY = this.y - cam.y + yOffset;
 
         // Don't draw if off screen
-        if (!Camera.isVisible(this.x, this.y, this.width, this.height)) return;
+        if (!cam.isVisible(this.x, this.y, this.width, this.height)) return;
 
         // Flash when invincible
         if (GameState.invincible > 0 && Math.floor(GameState.invincible / 4) % 2 === 0) return;
 
-        const isReal = GameState.currentWorld === 'real';
         const bodyColor = isReal ? '#4488ff' : '#ff6688';
         const shoeColor = '#aa2222';
         const skinColor = '#ffcc99';
 
         ctx.save();
+        // Clip to current world's viewport
+        ctx.beginPath();
+        ctx.rect(0, yOffset, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+        ctx.clip();
+
         if (!isReal && this.facing === -1) {
             ctx.translate(drawX + this.width, drawY);
             ctx.scale(-1, 1);
@@ -2881,15 +2989,19 @@ function updateEnemies() {
 }
 
 function drawEnemies() {
+    const isReal = GameState.currentWorld === 'real';
+    const cam = isReal ? RealCamera : DreamCamera;
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
+
     GameState.enemies.forEach(enemy => {
         if (enemy.world !== GameState.currentWorld) return;
 
         // Skip if not visible
-        if (!Camera.isVisible(enemy.x, enemy.y, enemy.width, enemy.height)) return;
+        if (!cam.isVisible(enemy.x, enemy.y, enemy.width, enemy.height)) return;
 
-        // Apply camera offset
-        const drawX = enemy.x - Camera.x;
-        const drawY = enemy.y - Camera.y;
+        // Apply camera offset + viewport offset
+        const drawX = enemy.x - cam.x;
+        const drawY = enemy.y - cam.y + yOffset;
 
         // Decrement hit flash
         if (enemy.hitFlash > 0) enemy.hitFlash--;
@@ -3565,12 +3677,16 @@ function updateBoss() {
 
 // Draw Void Specter - plasma orb with electric tentacles
 function drawVoidSpecter(boss) {
-    // Skip if off screen
-    if (!Camera.isVisible(boss.x - 50, boss.y - 50, boss.width + 100, boss.height + 100)) return;
+    const isReal = GameState.currentWorld === 'real';
+    const cam = isReal ? RealCamera : DreamCamera;
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
 
-    // Apply camera offset
-    const drawX = boss.x - Camera.x;
-    const drawY = boss.y - Camera.y;
+    // Skip if off screen
+    if (!cam.isVisible(boss.x - 50, boss.y - 50, boss.width + 100, boss.height + 100)) return;
+
+    // Apply camera offset + viewport offset
+    const drawX = boss.x - cam.x;
+    const drawY = boss.y - cam.y + yOffset;
 
     // Decrement hit flash
     if (boss.hitFlash > 0) boss.hitFlash--;
@@ -3812,6 +3928,9 @@ function drawBoss() {
     if (GameState.currentWorld !== GameState.boss.world) return;
 
     const boss = GameState.boss;
+    const isReal = GameState.currentWorld === 'real';
+    const cam = isReal ? RealCamera : DreamCamera;
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
 
     // Void Specter has unique appearance
     if (boss.type === 'specter') {
@@ -3820,11 +3939,11 @@ function drawBoss() {
     }
 
     // Skip if off screen
-    if (!Camera.isVisible(boss.x, boss.y, boss.width, boss.height)) return;
+    if (!cam.isVisible(boss.x, boss.y, boss.width, boss.height)) return;
 
-    // Apply camera offset
-    const drawX = boss.x - Camera.x;
-    const drawY = boss.y - Camera.y;
+    // Apply camera offset + viewport offset
+    const drawX = boss.x - cam.x;
+    const drawY = boss.y - cam.y + yOffset;
 
     // Decrement hit flash
     if (boss.hitFlash > 0) boss.hitFlash--;
@@ -4202,13 +4321,17 @@ function collectDrop(drop) {
 }
 
 function drawDrops() {
+    const isReal = GameState.currentWorld === 'real';
+    const cam = isReal ? RealCamera : DreamCamera;
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
+
     GameState.drops.forEach(drop => {
         // Skip if not visible
-        if (!Camera.isVisible(drop.x - 16, drop.y - 16, 32, 32)) return;
+        if (!cam.isVisible(drop.x - 16, drop.y - 16, 32, 32)) return;
 
         const bob = Math.sin(Date.now() * 0.005 + drop.bobOffset) * 3;
-        const drawX = drop.x - Camera.x;
-        const drawY = drop.y - Camera.y + bob;
+        const drawX = drop.x - cam.x;
+        const drawY = drop.y - cam.y + yOffset + bob;
 
         switch (drop.type) {
             case 'coin':
@@ -4361,13 +4484,17 @@ function useWorldPower() {
 }
 
 function drawProjectiles() {
+    const isReal = GameState.currentWorld === 'real';
+    const cam = isReal ? RealCamera : DreamCamera;
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
+
     GameState.projectiles.forEach(p => {
         // Skip if not visible
-        if (!Camera.isVisible(p.x - 15, p.y - 15, 30, 30)) return;
+        if (!cam.isVisible(p.x - 15, p.y - 15, 30, 30)) return;
 
-        // Apply camera offset
-        const drawX = p.x - Camera.x;
-        const drawY = p.y - Camera.y;
+        // Apply camera offset + viewport offset
+        const drawX = p.x - cam.x;
+        const drawY = p.y - cam.y + yOffset;
 
         // Dark orb from Void Specter or Void Orb enemies
         if (p.isDarkOrb) {
@@ -4461,26 +4588,35 @@ function drawProjectiles() {
 const RealWorld = {
     draw() {
         const tiles = Levels.getReal();
+        const cam = RealCamera;
 
-        // Fill entire viewport with background
+        // Save context and clip to top viewport
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, REAL_WORLD_Y_OFFSET, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+        ctx.clip();
+
+        // Fill viewport with background
         ctx.fillStyle = '#331400'; // Dark orange background
-        ctx.fillRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+        ctx.fillRect(0, REAL_WORLD_Y_OFFSET, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
         // Calculate visible tile range for optimization
-        const startTileX = Math.floor(Camera.x / TILE_SIZE);
-        const startTileY = Math.floor(Camera.y / TILE_SIZE);
-        const endTileX = Math.min(startTileX + VIEWPORT_TILES_X + 1, tiles[0]?.length || 0);
-        const endTileY = Math.min(startTileY + VIEWPORT_TILES_Y + 1, tiles.length);
+        const startTileX = Math.floor(cam.x / TILE_SIZE);
+        const startTileY = Math.floor(cam.y / TILE_SIZE);
+        const endTileX = Math.min(startTileX + VIEWPORT_TILES_X + 2, tiles[0]?.length || 0);
+        const endTileY = Math.min(startTileY + VIEWPORT_TILES_Y + 2, tiles.length);
 
         // Draw only visible tiles with camera offset
         for (let y = Math.max(0, startTileY); y < endTileY; y++) {
             for (let x = Math.max(0, startTileX); x < endTileX; x++) {
                 const tile = tiles[y][x];
-                const px = x * TILE_SIZE - Camera.x;
-                const py = y * TILE_SIZE - Camera.y;
+                const px = x * TILE_SIZE - cam.x;
+                const py = y * TILE_SIZE - cam.y + REAL_WORLD_Y_OFFSET;
                 this.drawTile(tile, px, py);
             }
         }
+
+        ctx.restore();
     },
 
     drawTile(tile, px, py) {
@@ -4616,14 +4752,21 @@ const DreamWorld = {
     draw() {
         const tiles = Levels.getDream();
         const worldHeight = tiles.length * TILE_SIZE;
+        const cam = DreamCamera;
+
+        // Save context and clip to bottom viewport
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, DREAM_WORLD_Y_OFFSET, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+        ctx.clip();
 
         // Gradient background that fills viewport
-        const gradient = ctx.createLinearGradient(0, 0, 0, VIEWPORT_HEIGHT);
+        const gradient = ctx.createLinearGradient(0, DREAM_WORLD_Y_OFFSET, 0, DREAM_WORLD_Y_OFFSET + VIEWPORT_HEIGHT);
         gradient.addColorStop(0, '#0a0515');
         gradient.addColorStop(0.5, '#1a0a2e');
         gradient.addColorStop(1, '#2a1a4a');
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+        ctx.fillRect(0, DREAM_WORLD_Y_OFFSET, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
         // Parallax stars (move slower than camera for depth)
         ctx.fillStyle = '#ffffff';
@@ -4631,42 +4774,45 @@ const DreamWorld = {
             const baseX = (i * 73) % (DREAM_WORLD_WIDTH * TILE_SIZE);
             const baseY = (i * 47) % worldHeight;
             const parallax = 0.3; // Stars move at 30% of camera speed
-            const x = baseX - Camera.x * parallax;
-            const y = baseY - Camera.y * parallax;
-            // Wrap stars
+            const x = baseX - cam.x * parallax;
+            const y = baseY - cam.y * parallax;
+            // Wrap stars within viewport
             const wrappedX = ((x % VIEWPORT_WIDTH) + VIEWPORT_WIDTH) % VIEWPORT_WIDTH;
             const wrappedY = ((y % VIEWPORT_HEIGHT) + VIEWPORT_HEIGHT) % VIEWPORT_HEIGHT;
             const twinkle = Math.sin(Date.now() * 0.005 + i) * 0.5 + 0.5;
             ctx.globalAlpha = twinkle * 0.8;
-            ctx.fillRect(wrappedX, wrappedY, (i % 3) + 1, (i % 3) + 1);
+            ctx.fillRect(wrappedX, DREAM_WORLD_Y_OFFSET + wrappedY, (i % 3) + 1, (i % 3) + 1);
         }
         ctx.globalAlpha = 1;
 
         // Calculate visible tile range
-        const startTileX = Math.floor(Camera.x / TILE_SIZE);
-        const startTileY = Math.floor(Camera.y / TILE_SIZE);
-        const endTileX = Math.min(startTileX + VIEWPORT_TILES_X + 1, tiles[0]?.length || 0);
-        const endTileY = Math.min(startTileY + VIEWPORT_TILES_Y + 1, tiles.length);
+        const startTileX = Math.floor(cam.x / TILE_SIZE);
+        const startTileY = Math.floor(cam.y / TILE_SIZE);
+        const endTileX = Math.min(startTileX + VIEWPORT_TILES_X + 2, tiles[0]?.length || 0);
+        const endTileY = Math.min(startTileY + VIEWPORT_TILES_Y + 2, tiles.length);
 
         // Draw only visible tiles with camera offset
         for (let y = Math.max(0, startTileY); y < endTileY; y++) {
             for (let x = Math.max(0, startTileX); x < endTileX; x++) {
                 if (x < tiles[y].length) {
                     const tile = tiles[y][x];
-                    const px = x * TILE_SIZE - Camera.x;
-                    const py = y * TILE_SIZE - Camera.y;
+                    const px = x * TILE_SIZE - cam.x;
+                    const py = y * TILE_SIZE - cam.y + DREAM_WORLD_Y_OFFSET;
                     this.drawTile(tile, px, py);
                 }
             }
         }
 
+        ctx.restore();
+
+        // Door prompt (outside of clip region)
         if (GameState.nearDoor && GameState.currentWorld === 'dream') {
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(GAME_WIDTH/2 - 80, DREAM_WORLD_Y_OFFSET + DREAM_WORLD_HEIGHT - 35, 160, 28);
+            ctx.fillRect(GAME_WIDTH/2 - 80, DREAM_WORLD_Y_OFFSET + VIEWPORT_HEIGHT - 35, 160, 28);
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 14px Courier New';
             ctx.textAlign = 'center';
-            ctx.fillText('Press E to enter', GAME_WIDTH/2, DREAM_WORLD_Y_OFFSET + DREAM_WORLD_HEIGHT - 16);
+            ctx.fillText('Press E to enter', GAME_WIDTH/2, DREAM_WORLD_Y_OFFSET + VIEWPORT_HEIGHT - 16);
             ctx.textAlign = 'left';
         }
     },
@@ -4905,10 +5051,24 @@ function switchWorld() {
 
     if (GameState.currentWorld === 'real') {
         GameState.currentWorld = 'dream';
-        // Spawn at bottom of dream world (ground level)
+        // Find portal location in dream world and spawn there
         const dreamTiles = Levels.getDream();
-        Player.x = 2 * TILE_SIZE;
-        Player.y = (dreamTiles.length - 3) * TILE_SIZE; // Near bottom
+        let portalX = 2 * TILE_SIZE;
+        let portalY = (dreamTiles.length - 3) * TILE_SIZE;
+
+        // Search for portal tile (2) in dream world
+        for (let y = 0; y < dreamTiles.length; y++) {
+            for (let x = 0; x < dreamTiles[y].length; x++) {
+                if (dreamTiles[y][x] === 2) {
+                    portalX = x * TILE_SIZE;
+                    portalY = y * TILE_SIZE;
+                    break;
+                }
+            }
+        }
+
+        Player.x = portalX;
+        Player.y = portalY;
         Player.isMoving = false;
         Player.isJumping = false;
         Player.isFalling = false;
@@ -4929,9 +5089,23 @@ function switchWorld() {
         }
     } else {
         GameState.currentWorld = 'real';
-        // Spawn at center-ish of real world
-        Player.gridX = 20;
-        Player.gridY = 20;
+        // Find portal location in real world and spawn there
+        const realTiles = Levels.getReal();
+        let portalX = 10, portalY = 10;
+
+        // Search for portal tile (2) in real world
+        for (let y = 0; y < realTiles.length; y++) {
+            for (let x = 0; x < realTiles[y].length; x++) {
+                if (realTiles[y][x] === 2) {
+                    portalX = x;
+                    portalY = y;
+                    break;
+                }
+            }
+        }
+
+        Player.gridX = portalX;
+        Player.gridY = portalY;
         Player.x = Player.gridX * TILE_SIZE + 2;
         Player.y = Player.gridY * TILE_SIZE + 2;
         Player.isMoving = false;
@@ -5194,29 +5368,32 @@ function drawActiveHighlight() {
 // Draw world indicator at top of screen
 function drawWorldIndicator() {
     const isReal = GameState.currentWorld === 'real';
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
     const text = isReal ? 'REAL WORLD - X to shoot' : 'DREAM WORLD - X for fireball';
     const bgColor = isReal ? 'rgba(255, 102, 0, 0.8)' : 'rgba(138, 43, 226, 0.8)';
     const textColor = isReal ? '#fff' : '#DDA0DD';
 
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(5, 5, 220, 22);
+    ctx.fillRect(5, yOffset + 5, 220, 22);
     ctx.fillStyle = bgColor;
-    ctx.fillRect(6, 6, 218, 20);
+    ctx.fillRect(6, yOffset + 6, 218, 20);
     ctx.fillStyle = textColor;
     ctx.font = 'bold 12px Courier New';
-    ctx.fillText(text, 12, 20);
+    ctx.fillText(text, 12, yOffset + 20);
 
     // Show level and room info
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(VIEWPORT_WIDTH - 105, 5, 100, 22);
+    ctx.fillRect(VIEWPORT_WIDTH - 105, yOffset + 5, 100, 22);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 11px Courier New';
     const roomText = isReal ? `L${Levels.current} R${GameState.currentRoom}` : `Level ${Levels.current}`;
-    ctx.fillText(roomText, VIEWPORT_WIDTH - 98, 20);
+    ctx.fillText(roomText, VIEWPORT_WIDTH - 98, yOffset + 20);
 }
 
 function drawPowerUpStatus() {
-    const yBase = 30; // Fixed position at top
+    const isReal = GameState.currentWorld === 'real';
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
+    const yBase = yOffset + 30; // Position below world indicator
 
     // Power boost indicator - shows 2x DMG + 1.5x SPD
     if (GameState.powerBoostTimer > 0) {
@@ -5242,10 +5419,9 @@ function drawPowerUpStatus() {
 
     // Shield visual effect around player
     if (GameState.shieldTimer > 0) {
-        const yOffset = GameState.currentWorld === 'real' ? 0 : DREAM_WORLD_Y_OFFSET;
-        const cameraOffset = GameState.currentWorld === 'real' ? 0 : GameState.cameraX;
-        const drawX = Player.x - cameraOffset + Player.width / 2;
-        const drawY = Player.y + yOffset + Player.height / 2;
+        const cam = isReal ? RealCamera : DreamCamera;
+        const drawX = Player.x - cam.x + Player.width / 2;
+        const drawY = Player.y - cam.y + yOffset + Player.height / 2;
 
         ctx.strokeStyle = '#4488ff';
         ctx.lineWidth = 2;
@@ -5260,7 +5436,9 @@ function drawPowerUpStatus() {
 function drawMessage() {
     if (GameState.messageTimer <= 0 || !GameState.messageText) return;
 
-    const yPos = GameState.currentWorld === 'real' ? GAME_HEIGHT / 2 - 100 : DREAM_WORLD_Y_OFFSET + 60;
+    const isReal = GameState.currentWorld === 'real';
+    const yOffset = isReal ? REAL_WORLD_Y_OFFSET : DREAM_WORLD_Y_OFFSET;
+    const yPos = yOffset + VIEWPORT_HEIGHT / 2 - 10; // Center in current viewport
 
     // Pulsing effect
     const pulse = Math.sin(Date.now() * 0.01) * 0.2 + 0.8;
@@ -5321,7 +5499,7 @@ function update() {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     // Handle different screen states
     if (GameState.screenState === 'title') {
@@ -5335,14 +5513,17 @@ function draw() {
         return;
     }
 
-    // Draw only the active world (one at a time, fullscreen)
-    if (GameState.currentWorld === 'real') {
-        RealWorld.draw();
-    } else {
-        DreamWorld.draw();
-    }
+    // Draw BOTH worlds (split-screen layout)
+    RealWorld.draw();   // Top half
+    DreamWorld.draw();  // Bottom half
 
-    // Draw game entities (with camera offset applied in their draw functions)
+    // Draw divider line between worlds
+    ctx.fillStyle = '#444';
+    ctx.fillRect(0, DREAM_WORLD_Y_OFFSET - 2, GAME_WIDTH, 4);
+    ctx.fillStyle = '#888';
+    ctx.fillRect(0, DREAM_WORLD_Y_OFFSET - 1, GAME_WIDTH, 2);
+
+    // Draw game entities in active world only (with camera offset)
     drawEnemies();
     drawBoss();
     drawDrops();

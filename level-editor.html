@@ -334,10 +334,25 @@
     <div class="sidebar">
         <h1>Dreamworld Editor</h1>
 
+        <h2>Level Info</h2>
+        <div class="controls">
+            <input type="text" id="levelTitle" placeholder="Level name (e.g., Forest Ruins Room 1)" style="width: 100%; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #222; color: #fff; font-size: 0.9em;">
+        </div>
+
         <h2>World Type</h2>
         <div class="world-toggle">
             <button id="realWorldBtn" class="btn-secondary active" onclick="setWorldType('real')">Real World</button>
             <button id="dreamWorldBtn" class="btn-secondary" onclick="setWorldType('dream')">Dream World</button>
+        </div>
+
+        <h2>Random Generate</h2>
+        <div class="controls">
+            <div style="display: flex; gap: 5px;">
+                <button class="btn-secondary" onclick="generateRandom('basic')" style="flex:1; font-size: 0.8em; padding: 8px 5px;">Basic</button>
+                <button class="btn-secondary" onclick="generateRandom('medium')" style="flex:1; font-size: 0.8em; padding: 8px 5px;">Medium</button>
+                <button class="btn-secondary" onclick="generateRandom('complex')" style="flex:1; font-size: 0.8em; padding: 8px 5px;">Complex</button>
+            </div>
+            <p style="font-size: 0.7em; color: #888; margin-top: 5px;">Click multiple times for different layouts</p>
         </div>
 
         <h2>Grid Size</h2>
@@ -885,6 +900,383 @@
             }
         }
 
+        // ==========================================
+        // RANDOM LEVEL GENERATION
+        // ==========================================
+
+        function generateRandom(complexity) {
+            if (!confirm(`Generate a ${complexity} random level? This will replace the current level.`)) {
+                return;
+            }
+
+            saveHistory();
+
+            // Clear to floor
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    level[y][x] = 0;
+                }
+            }
+
+            // Always add wall border
+            for (let x = 0; x < gridWidth; x++) {
+                level[0][x] = 1;
+                level[gridHeight - 1][x] = 1;
+            }
+            for (let y = 0; y < gridHeight; y++) {
+                level[y][0] = 1;
+                level[y][gridWidth - 1] = 1;
+            }
+
+            if (worldType === 'real') {
+                if (complexity === 'basic') {
+                    generateBasicReal();
+                } else if (complexity === 'medium') {
+                    generateMediumReal();
+                } else {
+                    generateComplexReal();
+                }
+            } else {
+                // Dream world generation (placeholder for now)
+                generateDreamLevel(complexity);
+            }
+
+            render();
+            validate();
+        }
+
+        function rand(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function generateBasicReal() {
+            // Basic: Open room with portal, maybe a few pillars and one water feature
+
+            // Place portal in a random accessible spot
+            const portalX = rand(5, gridWidth - 6);
+            const portalY = rand(5, gridHeight - 6);
+            level[portalY][portalX] = 2;
+
+            // Add 2-4 random wall pillars
+            const pillarCount = rand(2, 4);
+            for (let i = 0; i < pillarCount; i++) {
+                const px = rand(3, gridWidth - 4);
+                const py = rand(3, gridHeight - 4);
+                if (Math.abs(px - portalX) > 2 || Math.abs(py - portalY) > 2) {
+                    // 2x2 pillar
+                    level[py][px] = 1;
+                    level[py + 1][px] = 1;
+                    level[py][px + 1] = 1;
+                    level[py + 1][px + 1] = 1;
+                }
+            }
+
+            // Maybe add a small water pool (30% chance)
+            if (Math.random() < 0.3) {
+                const wx = rand(5, gridWidth - 10);
+                const wy = rand(5, gridHeight - 10);
+                for (let dy = 0; dy < 3; dy++) {
+                    for (let dx = 0; dx < 4; dx++) {
+                        if (level[wy + dy][wx + dx] === 0) {
+                            level[wy + dy][wx + dx] = 8;
+                        }
+                    }
+                }
+            }
+
+            // Add a room door (for multi-room levels)
+            const doorSide = rand(0, 3);
+            placeRoomDoor(doorSide);
+        }
+
+        function generateMediumReal() {
+            // Medium: Water features with bridges, some walls, key + locked door
+
+            // Create water feature (lake or river)
+            const featureType = Math.random() < 0.5 ? 'lake' : 'river';
+
+            if (featureType === 'lake') {
+                // Central lake
+                const lakeX = Math.floor(gridWidth / 2) - rand(4, 7);
+                const lakeY = Math.floor(gridHeight / 2) - rand(3, 5);
+                const lakeW = rand(8, 14);
+                const lakeH = rand(6, 10);
+
+                for (let dy = 0; dy < lakeH; dy++) {
+                    for (let dx = 0; dx < lakeW; dx++) {
+                        if (lakeY + dy > 0 && lakeY + dy < gridHeight - 1 &&
+                            lakeX + dx > 0 && lakeX + dx < gridWidth - 1) {
+                            level[lakeY + dy][lakeX + dx] = 8;
+                        }
+                    }
+                }
+
+                // Add bridges across
+                const bridgeY = lakeY + Math.floor(lakeH / 2);
+                for (let dx = 0; dx < lakeW; dx++) {
+                    level[bridgeY][lakeX + dx] = 9;
+                }
+
+            } else {
+                // Horizontal river
+                const riverY = Math.floor(gridHeight / 2) - rand(0, 3);
+                const riverH = rand(3, 5);
+
+                for (let y = riverY; y < riverY + riverH && y < gridHeight - 1; y++) {
+                    for (let x = 1; x < gridWidth - 1; x++) {
+                        level[y][x] = 8;
+                    }
+                }
+
+                // Add 2-3 bridges
+                const bridgeCount = rand(2, 3);
+                for (let i = 0; i < bridgeCount; i++) {
+                    const bx = rand(5, gridWidth - 6) + i * Math.floor(gridWidth / bridgeCount / 2);
+                    if (bx < gridWidth - 1) {
+                        for (let y = riverY; y < riverY + riverH && y < gridHeight - 1; y++) {
+                            level[y][bx] = 9;
+                            level[y][bx + 1] = 9;
+                        }
+                    }
+                }
+            }
+
+            // Place portal on one side
+            const portalX = rand(2, 6);
+            const portalY = rand(2, gridHeight - 3);
+            if (level[portalY][portalX] === 0) {
+                level[portalY][portalX] = 2;
+            } else {
+                // Find clear spot
+                for (let y = 2; y < gridHeight - 2; y++) {
+                    for (let x = 2; x < 10; x++) {
+                        if (level[y][x] === 0) {
+                            level[y][x] = 2;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Add key and locked door
+            const keyX = rand(gridWidth - 10, gridWidth - 3);
+            const keyY = rand(2, gridHeight - 3);
+            if (level[keyY][keyX] === 0) {
+                level[keyY][keyX] = 4;
+            }
+
+            const lockedDoorX = Math.floor(gridWidth / 2) + rand(-3, 3);
+            const lockedDoorY = rand(2, 5);
+            if (level[lockedDoorY][lockedDoorX] === 0) {
+                level[lockedDoorY][lockedDoorX] = 10;
+            }
+
+            // Add some wall sections
+            addRandomWallSection();
+
+            // Room door
+            placeRoomDoor(rand(0, 3));
+        }
+
+        function generateComplexReal() {
+            // Complex: Maze-like corridors, multiple water areas, multiple keys/doors
+
+            // Create maze-like wall structure
+            for (let y = 4; y < gridHeight - 4; y += rand(5, 8)) {
+                const wallStart = rand(2, 10);
+                const wallEnd = rand(gridWidth - 10, gridWidth - 2);
+                const gapPos = rand(wallStart + 3, wallEnd - 3);
+                const gapSize = rand(2, 4);
+
+                for (let x = wallStart; x < wallEnd; x++) {
+                    if (x < gapPos || x >= gapPos + gapSize) {
+                        level[y][x] = 1;
+                    }
+                }
+            }
+
+            // Add vertical wall segments
+            for (let x = 6; x < gridWidth - 6; x += rand(8, 12)) {
+                const wallStart = rand(2, 8);
+                const wallEnd = rand(gridHeight - 8, gridHeight - 2);
+                const gapPos = rand(wallStart + 2, wallEnd - 2);
+                const gapSize = rand(2, 3);
+
+                for (let y = wallStart; y < wallEnd; y++) {
+                    if ((y < gapPos || y >= gapPos + gapSize) && level[y][x] === 0) {
+                        level[y][x] = 1;
+                    }
+                }
+            }
+
+            // Add multiple water pools
+            const poolCount = rand(2, 4);
+            for (let i = 0; i < poolCount; i++) {
+                const px = rand(5, gridWidth - 10);
+                const py = rand(5, gridHeight - 10);
+                const pw = rand(4, 8);
+                const ph = rand(3, 6);
+
+                for (let dy = 0; dy < ph; dy++) {
+                    for (let dx = 0; dx < pw; dx++) {
+                        if (py + dy < gridHeight - 1 && px + dx < gridWidth - 1) {
+                            if (level[py + dy][px + dx] === 0) {
+                                level[py + dy][px + dx] = 8;
+                            }
+                        }
+                    }
+                }
+
+                // Bridge across each pool
+                const bridgeY = py + Math.floor(ph / 2);
+                if (bridgeY < gridHeight - 1) {
+                    for (let dx = 0; dx < pw; dx++) {
+                        if (px + dx < gridWidth - 1 && level[bridgeY][px + dx] === 8) {
+                            level[bridgeY][px + dx] = 9;
+                        }
+                    }
+                }
+            }
+
+            // Place portal in a clear corner area
+            for (let y = 2; y < 8; y++) {
+                for (let x = 2; x < 8; x++) {
+                    if (level[y][x] === 0) {
+                        level[y][x] = 2;
+                        y = 100; // break outer
+                        break;
+                    }
+                }
+            }
+
+            // Add 2 keys and 2 locked doors
+            const keyPositions = [];
+            for (let i = 0; i < 2; i++) {
+                let placed = false;
+                for (let attempts = 0; attempts < 50 && !placed; attempts++) {
+                    const kx = rand(10, gridWidth - 5);
+                    const ky = rand(5, gridHeight - 5);
+                    if (level[ky][kx] === 0) {
+                        level[ky][kx] = 4;
+                        keyPositions.push({ x: kx, y: ky });
+                        placed = true;
+                    }
+                }
+            }
+
+            for (let i = 0; i < 2; i++) {
+                let placed = false;
+                for (let attempts = 0; attempts < 50 && !placed; attempts++) {
+                    const dx = rand(5, gridWidth - 10);
+                    const dy = rand(3, gridHeight - 8);
+                    if (level[dy][dx] === 0) {
+                        level[dy][dx] = 10;
+                        placed = true;
+                    }
+                }
+            }
+
+            // Add room doors on 2 sides
+            placeRoomDoor(0);
+            placeRoomDoor(2);
+
+            // Clear starting area to ensure accessibility
+            for (let y = 1; y < 4; y++) {
+                for (let x = 1; x < 6; x++) {
+                    if (level[y][x] !== 2) {
+                        level[y][x] = 0;
+                    }
+                }
+            }
+        }
+
+        function addRandomWallSection() {
+            const wallX = rand(10, gridWidth - 15);
+            const wallY = rand(10, gridHeight - 10);
+            const wallLen = rand(5, 10);
+            const horizontal = Math.random() < 0.5;
+
+            if (horizontal) {
+                for (let i = 0; i < wallLen; i++) {
+                    if (level[wallY][wallX + i] === 0) {
+                        level[wallY][wallX + i] = 1;
+                    }
+                }
+            } else {
+                for (let i = 0; i < wallLen; i++) {
+                    if (level[wallY + i] && level[wallY + i][wallX] === 0) {
+                        level[wallY + i][wallX] = 1;
+                    }
+                }
+            }
+        }
+
+        function placeRoomDoor(side) {
+            // 0 = top, 1 = right, 2 = bottom, 3 = left
+            let x, y;
+            switch (side) {
+                case 0: // top
+                    x = rand(5, gridWidth - 6);
+                    y = 0;
+                    level[y][x] = 7;
+                    level[y + 1][x] = 0; // clear in front
+                    break;
+                case 1: // right
+                    x = gridWidth - 1;
+                    y = rand(5, gridHeight - 6);
+                    level[y][x] = 7;
+                    level[y][x - 1] = 0;
+                    break;
+                case 2: // bottom
+                    x = rand(5, gridWidth - 6);
+                    y = gridHeight - 1;
+                    level[y][x] = 7;
+                    level[y - 1][x] = 0;
+                    break;
+                case 3: // left
+                    x = 0;
+                    y = rand(5, gridHeight - 6);
+                    level[y][x] = 7;
+                    level[y][x + 1] = 0;
+                    break;
+            }
+        }
+
+        function generateDreamLevel(complexity) {
+            // Placeholder for dream world - will be expanded later
+            // For now, create a simple platformer layout
+
+            // Floor at bottom
+            for (let x = 0; x < gridWidth; x++) {
+                level[gridHeight - 1][x] = 1;
+            }
+
+            // Platforms
+            const platformCount = complexity === 'basic' ? 3 : complexity === 'medium' ? 6 : 10;
+
+            for (let i = 0; i < platformCount; i++) {
+                const px = rand(2, gridWidth - 8);
+                const py = rand(3, gridHeight - 4);
+                const plen = rand(3, 8);
+
+                for (let j = 0; j < plen && px + j < gridWidth - 1; j++) {
+                    level[py][px + j] = 1;
+                }
+            }
+
+            // Portal near left
+            level[gridHeight - 2][2] = 2;
+
+            // Exit on right edge
+            for (let y = 0; y < gridHeight; y++) {
+                level[y][gridWidth - 1] = 6;
+            }
+        }
+
+        // ==========================================
+        // DRAWING TOOLS
+        // ==========================================
+
         // Draw line (Bresenham)
         function drawLine(x0, y0, x1, y1, tile) {
             const dx = Math.abs(x1 - x0);
@@ -1074,7 +1466,17 @@
 
         // Export/Import
         function exportLevel() {
-            let output = '[\n';
+            const title = document.getElementById('levelTitle').value.trim();
+            const timestamp = new Date().toISOString().split('T')[0];
+
+            let output = '';
+
+            // Add header comment with title and metadata
+            if (title) {
+                output += `// ${title}\n`;
+            }
+            output += `// Generated: ${timestamp} | Size: ${gridWidth}x${gridHeight} | Type: ${worldType}\n`;
+            output += '[\n';
             for (let y = 0; y < gridHeight; y++) {
                 output += '    [';
                 output += level[y].join(',');

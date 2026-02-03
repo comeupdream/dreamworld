@@ -297,71 +297,6 @@
             color: #ffaa00;
         }
 
-        /* World Type Toggle - PROMINENT */
-        .world-toggle {
-            display: flex;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 3px solid #ff6600;
-            box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
-            margin: 10px 0;
-        }
-
-        .world-toggle button {
-            flex: 1;
-            border-radius: 0;
-            padding: 15px 10px;
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-
-        .world-toggle button#realWorldBtn {
-            background: #2a4a6a;
-            color: #88ccff;
-        }
-
-        .world-toggle button#realWorldBtn:hover {
-            background: #3a5a7a;
-        }
-
-        .world-toggle button#realWorldBtn.active {
-            background: linear-gradient(135deg, #0088ff, #0066cc);
-            color: white;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
-        }
-
-        .world-toggle button#dreamWorldBtn {
-            background: #4a2a6a;
-            color: #dd88ff;
-        }
-
-        .world-toggle button#dreamWorldBtn:hover {
-            background: #5a3a7a;
-        }
-
-        .world-toggle button#dreamWorldBtn.active {
-            background: linear-gradient(135deg, #aa00ff, #8800cc);
-            color: white;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
-        }
-
-        .world-type-header {
-            background: linear-gradient(135deg, #ff6600, #ff3300);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 5px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 5px rgba(255, 102, 0, 0.5); }
-            50% { box-shadow: 0 0 20px rgba(255, 102, 0, 0.8); }
-        }
-
         /* Keyboard shortcuts */
         .shortcuts {
             font-size: 0.75em;
@@ -384,12 +319,6 @@
         <h2>Level Info</h2>
         <div class="controls">
             <input type="text" id="levelTitle" placeholder="Level name (e.g., Forest Ruins Room 1)" style="width: 100%; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #222; color: #fff; font-size: 0.9em;">
-        </div>
-
-        <div class="world-type-header">SELECT WORLD TYPE</div>
-        <div style="display: flex; gap: 0; border: 3px solid #ff6600; border-radius: 8px; overflow: hidden; margin: 10px 0;">
-            <button id="realWorldBtn" class="active" onclick="setWorldType('real')" style="flex: 1; min-height: 50px; padding: 15px 10px; font-size: 14px; font-weight: bold; background: linear-gradient(135deg, #0088ff, #0066cc); color: white; border: none; cursor: pointer;">REAL WORLD</button>
-            <button id="dreamWorldBtn" onclick="setWorldType('dream')" style="flex: 1; min-height: 50px; padding: 15px 10px; font-size: 14px; font-weight: bold; background: #4a2a6a; color: #dd88ff; border: none; cursor: pointer;">DREAM WORLD</button>
         </div>
 
         <h2>Random Generate</h2>
@@ -453,6 +382,11 @@
     </div>
 
     <div class="main">
+        <!-- HUGE WORLD TOGGLE BUTTONS -->
+        <div style="display: flex; gap: 20px; padding: 20px; background: #000; margin-bottom: 10px;">
+            <button id="realWorldBtn" class="active" onclick="setWorldType('real')" style="flex: 1; height: 80px; font-size: 28px; font-weight: bold; background: linear-gradient(135deg, #0088ff, #0044aa); color: white; border: 5px solid #00ccff; border-radius: 15px; cursor: pointer; text-shadow: 2px 2px 4px #000; box-shadow: 0 0 30px #0088ff;">REAL WORLD</button>
+            <button id="dreamWorldBtn" onclick="setWorldType('dream')" style="flex: 1; height: 80px; font-size: 28px; font-weight: bold; background: linear-gradient(135deg, #8800cc, #440066); color: #ff88ff; border: 5px solid #aa00ff; border-radius: 15px; cursor: pointer; text-shadow: 2px 2px 4px #000;">DREAM WORLD</button>
+        </div>
         <div class="canvas-header">
             <div class="canvas-info" id="canvasInfo">Position: (0, 0) | Tile: Floor</div>
             <div>
@@ -1003,17 +937,25 @@
             realBtn.classList.toggle('active', type === 'real');
             dreamBtn.classList.toggle('active', type === 'dream');
 
-            // Update button styles for visibility
+            // Update button styles - huge glowing buttons
             if (type === 'real') {
-                realBtn.style.background = 'linear-gradient(135deg, #0088ff, #0066cc)';
+                realBtn.style.background = 'linear-gradient(135deg, #0088ff, #0044aa)';
                 realBtn.style.color = 'white';
-                dreamBtn.style.background = '#4a2a6a';
-                dreamBtn.style.color = '#dd88ff';
+                realBtn.style.boxShadow = '0 0 30px #0088ff';
+                realBtn.style.border = '5px solid #00ccff';
+                dreamBtn.style.background = 'linear-gradient(135deg, #440066, #220033)';
+                dreamBtn.style.color = '#aa66aa';
+                dreamBtn.style.boxShadow = 'none';
+                dreamBtn.style.border = '5px solid #660088';
             } else {
-                realBtn.style.background = '#2a4a6a';
-                realBtn.style.color = '#88ccff';
-                dreamBtn.style.background = 'linear-gradient(135deg, #aa00ff, #8800cc)';
+                realBtn.style.background = 'linear-gradient(135deg, #003366, #001133)';
+                realBtn.style.color = '#6688aa';
+                realBtn.style.boxShadow = 'none';
+                realBtn.style.border = '5px solid #004466';
+                dreamBtn.style.background = 'linear-gradient(135deg, #aa00ff, #660099)';
                 dreamBtn.style.color = 'white';
+                dreamBtn.style.boxShadow = '0 0 30px #aa00ff';
+                dreamBtn.style.border = '5px solid #cc44ff';
             }
 
             // Adjust default size

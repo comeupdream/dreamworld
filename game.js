@@ -1926,23 +1926,24 @@ const LevelTemplates = {
         },
         dream: {
             1: [
-                { x: 20, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
-                { x: 38, y: 10, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 }  // Moved from x=40 to avoid wall at 41
+                // Enemies on floor level (y=18, standing on floor at y=19)
+                { x: 15, y: 18, type: 'patrol', patrol: 'horizontal', range: 6, speed: 1.2 },
+                { x: 45, y: 18, type: 'patrol', patrol: 'horizontal', range: 6, speed: 1.2 }
             ],
             2: [
                 { x: 15, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.4 },
                 { x: 35, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2, variant: 'shadow' },
-                { x: 55, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 }
+                { x: 53, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6 }  // Moved from x=55 (was stuck in platform)
             ],
             3: [
                 // Level 3 dream world is the BOSS ARENA - fewer regular enemies
                 { x: 12, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.6, variant: 'shadow' },
-                { x: 28, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4, variant: 'shadow' }
+                { x: 26, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.4, variant: 'shadow' }  // Moved from x=28 (was stuck in platform)
             ],
             // Level 4: 15% harder than L1
             4: [
                 { x: 18, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
-                { x: 35, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },
+                { x: 33, y: 12, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.38 },  // Moved from x=35 (was stuck in platform)
                 { x: 50, y: 12, type: 'patrol', patrol: 'horizontal', range: 3, speed: 1.5 }
             ],
             // Level 5: 15% harder than L2, introduces Void Orbs

@@ -365,6 +365,41 @@
             <button class="btn-secondary" onclick="undo()">Undo (Ctrl+Z)</button>
         </div>
 
+        <h2 style="color: #ff4444;">Enemy Editor</h2>
+        <div class="controls">
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                <button class="btn-secondary enemy-mode-btn" onclick="setEditorMode('tiles')" id="tilesMode" style="flex:1; background: #ff6600;">Tiles</button>
+                <button class="btn-secondary enemy-mode-btn" onclick="setEditorMode('enemies')" id="enemiesMode" style="flex:1;">Enemies</button>
+            </div>
+            <div id="enemyControls" style="display: none;">
+                <label style="font-size: 0.85em; color: #aaa;">Enemy Type:</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 5px 0;">
+                    <button class="btn-secondary enemy-type-btn selected" onclick="selectEnemyType('patrol')" data-type="patrol" style="font-size: 0.8em; padding: 6px;">Patrol</button>
+                    <button class="btn-secondary enemy-type-btn" onclick="selectEnemyType('chase')" data-type="chase" style="font-size: 0.8em; padding: 6px;">Chase</button>
+                    <button class="btn-secondary enemy-type-btn" onclick="selectEnemyType('voidorb')" data-type="voidorb" style="font-size: 0.8em; padding: 6px;">Void Orb</button>
+                    <button class="btn-secondary enemy-type-btn" onclick="selectEnemyType('shadow')" data-type="shadow" style="font-size: 0.8em; padding: 6px;">Shadow</button>
+                </div>
+                <div id="patrolOptions" style="margin-top: 8px;">
+                    <label style="font-size: 0.85em; color: #aaa;">Patrol Direction:</label>
+                    <div style="display: flex; gap: 5px; margin: 5px 0;">
+                        <button class="btn-secondary patrol-dir-btn selected" onclick="setPatrolDir('horizontal')" data-dir="horizontal" style="flex:1; font-size: 0.8em;">Horizontal</button>
+                        <button class="btn-secondary patrol-dir-btn" onclick="setPatrolDir('vertical')" data-dir="vertical" style="flex:1; font-size: 0.8em;">Vertical</button>
+                    </div>
+                    <div class="control-row" style="margin-top: 5px;">
+                        <label style="font-size: 0.85em;">Range:</label>
+                        <input type="number" id="patrolRange" value="4" min="1" max="20" style="width: 50px;">
+                    </div>
+                </div>
+                <div class="control-row" style="margin-top: 5px;">
+                    <label style="font-size: 0.85em;">Speed:</label>
+                    <input type="number" id="enemySpeed" value="1.2" min="0.1" max="5" step="0.1" style="width: 50px;">
+                </div>
+                <p style="font-size: 0.7em; color: #888; margin-top: 8px;">Click map to place. Right-click enemy to delete.</p>
+                <div id="enemyList" style="margin-top: 10px; max-height: 150px; overflow-y: auto; font-size: 0.8em;"></div>
+                <button class="btn-danger" onclick="clearEnemies()" style="width: 100%; margin-top: 8px; font-size: 0.8em;">Clear All Enemies</button>
+            </div>
+        </div>
+
         <h2>Validation</h2>
         <div class="validation" id="validation"></div>
 
@@ -482,6 +517,13 @@
         let maxHistory = 50;
         let rectStart = null;
         let lineStart = null;
+
+        // Enemy Editor State
+        let editorMode = 'tiles'; // 'tiles' or 'enemies'
+        let enemies = [];
+        let selectedEnemyType = 'patrol';
+        let patrolDirection = 'horizontal';
+        let selectedEnemy = null; // For editing existing enemy
 
         // Canvas setup
         const canvas = document.getElementById('levelCanvas');
@@ -804,10 +846,103 @@
                 drawDreamViewportOverlay(tileSize);
             }
 
+            // Draw enemies
+            drawEnemies(tileSize);
+
             // Draw preview for rect/line tools
             if (rectStart && currentTool === 'rect') {
                 // Preview would go here
             }
+        }
+
+        // Draw all enemies on the canvas
+        function drawEnemies(tileSize) {
+            enemies.forEach((enemy, index) => {
+                const px = enemy.x * tileSize;
+                const py = enemy.y * tileSize;
+                const isSelected = selectedEnemy === index;
+
+                // Draw patrol range first (behind enemy)
+                if (enemy.type === 'patrol' || enemy.type === 'shadow') {
+                    ctx.fillStyle = 'rgba(255, 100, 0, 0.2)';
+                    ctx.strokeStyle = 'rgba(255, 100, 0, 0.6)';
+                    ctx.lineWidth = 2;
+
+                    if (enemy.patrol === 'horizontal') {
+                        const rangeStartX = (enemy.x - enemy.range) * tileSize;
+                        const rangeWidth = (enemy.range * 2 + 1) * tileSize;
+                        ctx.fillRect(rangeStartX, py, rangeWidth, tileSize);
+                        ctx.strokeRect(rangeStartX, py, rangeWidth, tileSize);
+                    } else {
+                        const rangeStartY = (enemy.y - enemy.range) * tileSize;
+                        const rangeHeight = (enemy.range * 2 + 1) * tileSize;
+                        ctx.fillRect(px, rangeStartY, tileSize, rangeHeight);
+                        ctx.strokeRect(px, rangeStartY, tileSize, rangeHeight);
+                    }
+                }
+
+                // Draw enemy based on type
+                ctx.save();
+
+                if (enemy.type === 'patrol') {
+                    // Red square enemy
+                    ctx.fillStyle = '#cc3333';
+                    ctx.fillRect(px + 4, py + 4, tileSize - 8, tileSize - 8);
+                    ctx.fillStyle = '#ff6666';
+                    ctx.fillRect(px + 6, py + 6, tileSize - 12, tileSize - 12);
+                    // Eyes
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(px + 8, py + 10, 4, 4);
+                    ctx.fillRect(px + tileSize - 12, py + 10, 4, 4);
+                } else if (enemy.type === 'chase') {
+                    // Blue triangle-ish chaser
+                    ctx.fillStyle = '#3366cc';
+                    ctx.beginPath();
+                    ctx.moveTo(px + tileSize/2, py + 4);
+                    ctx.lineTo(px + tileSize - 4, py + tileSize - 4);
+                    ctx.lineTo(px + 4, py + tileSize - 4);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#6699ff';
+                    ctx.beginPath();
+                    ctx.arc(px + tileSize/2, py + tileSize/2 + 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (enemy.type === 'shadow') {
+                    // Dark purple shadow enemy
+                    ctx.fillStyle = '#2a0a3a';
+                    ctx.fillRect(px + 4, py + 4, tileSize - 8, tileSize - 8);
+                    ctx.fillStyle = '#5a2a7a';
+                    ctx.fillRect(px + 6, py + 6, tileSize - 12, tileSize - 12);
+                    // Glowing eyes
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.fillRect(px + 8, py + 10, 4, 4);
+                    ctx.fillRect(px + tileSize - 12, py + 10, 4, 4);
+                } else if (enemy.type === 'voidorb') {
+                    // Purple orb
+                    ctx.fillStyle = '#6600aa';
+                    ctx.beginPath();
+                    ctx.arc(px + tileSize/2, py + tileSize/2, tileSize/2 - 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#aa44ff';
+                    ctx.beginPath();
+                    ctx.arc(px + tileSize/2, py + tileSize/2, tileSize/4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Selection highlight
+                if (isSelected) {
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
+                }
+
+                // Speed label
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillText(enemy.speed.toFixed(1), px + 2, py + tileSize - 2);
+
+                ctx.restore();
+            });
         }
 
         // Find portal position in level
@@ -971,6 +1106,120 @@
             createPalette();
             render();
         }
+
+        // ==========================================
+        // ENEMY EDITOR FUNCTIONS
+        // ==========================================
+
+        function setEditorMode(mode) {
+            editorMode = mode;
+            document.getElementById('tilesMode').style.background = mode === 'tiles' ? '#ff6600' : '#444';
+            document.getElementById('enemiesMode').style.background = mode === 'enemies' ? '#ff4444' : '#444';
+            document.getElementById('enemyControls').style.display = mode === 'enemies' ? 'block' : 'none';
+
+            // Change cursor based on mode
+            canvas.style.cursor = mode === 'enemies' ? 'cell' : 'crosshair';
+            render();
+        }
+
+        function selectEnemyType(type) {
+            selectedEnemyType = type;
+            document.querySelectorAll('.enemy-type-btn').forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.type === type);
+                btn.style.background = btn.dataset.type === type ? '#ff4444' : '#444';
+            });
+
+            // Show/hide patrol options
+            const patrolOptions = document.getElementById('patrolOptions');
+            patrolOptions.style.display = (type === 'patrol' || type === 'shadow') ? 'block' : 'none';
+        }
+
+        function setPatrolDir(dir) {
+            patrolDirection = dir;
+            document.querySelectorAll('.patrol-dir-btn').forEach(btn => {
+                btn.classList.toggle('selected', btn.dataset.dir === dir);
+                btn.style.background = btn.dataset.dir === dir ? '#ff6600' : '#444';
+            });
+        }
+
+        function placeEnemy(x, y) {
+            const speed = parseFloat(document.getElementById('enemySpeed').value) || 1.2;
+            const range = parseInt(document.getElementById('patrolRange').value) || 4;
+
+            const enemy = {
+                x: x,
+                y: y,
+                type: selectedEnemyType,
+                speed: speed
+            };
+
+            // Add patrol properties for patrol and shadow types
+            if (selectedEnemyType === 'patrol' || selectedEnemyType === 'shadow') {
+                enemy.patrol = patrolDirection;
+                enemy.range = range;
+            }
+
+            // Shadow is a variant of patrol in game.js
+            if (selectedEnemyType === 'shadow') {
+                enemy.type = 'patrol';
+                enemy.variant = 'shadow';
+            }
+
+            enemies.push(enemy);
+            updateEnemyList();
+            render();
+        }
+
+        function findEnemyAt(x, y) {
+            return enemies.findIndex(e => e.x === x && e.y === y);
+        }
+
+        function deleteEnemy(index) {
+            if (index >= 0 && index < enemies.length) {
+                enemies.splice(index, 1);
+                if (selectedEnemy === index) selectedEnemy = null;
+                else if (selectedEnemy > index) selectedEnemy--;
+                updateEnemyList();
+                render();
+            }
+        }
+
+        function clearEnemies() {
+            if (confirm('Delete all enemies?')) {
+                enemies = [];
+                selectedEnemy = null;
+                updateEnemyList();
+                render();
+            }
+        }
+
+        function updateEnemyList() {
+            const list = document.getElementById('enemyList');
+            if (enemies.length === 0) {
+                list.innerHTML = '<div style="color: #666;">No enemies placed</div>';
+                return;
+            }
+
+            list.innerHTML = enemies.map((e, i) => {
+                const typeLabel = e.variant === 'shadow' ? 'Shadow' :
+                                  e.type.charAt(0).toUpperCase() + e.type.slice(1);
+                const patrolInfo = e.patrol ? ` (${e.patrol[0].toUpperCase()}, r:${e.range})` : '';
+                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 3px; background: ${selectedEnemy === i ? '#553300' : '#222'}; margin: 2px 0; border-radius: 3px; cursor: pointer;" onclick="selectEnemyInList(${i})">
+                    <span>${typeLabel}${patrolInfo} @(${e.x},${e.y})</span>
+                    <button onclick="event.stopPropagation(); deleteEnemy(${i})" style="background: #aa3333; border: none; color: white; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 0.8em;">X</button>
+                </div>`;
+            }).join('');
+        }
+
+        function selectEnemyInList(index) {
+            selectedEnemy = selectedEnemy === index ? null : index;
+            updateEnemyList();
+            render();
+        }
+
+        // ==========================================
+        // END ENEMY EDITOR
+        // ==========================================
 
         // Canvas interaction
         function getTileCoords(e) {
@@ -1437,8 +1686,28 @@
 
         // Mouse events
         canvas.addEventListener('mousedown', (e) => {
-            isDrawing = true;
             const { x, y } = getTileCoords(e);
+
+            // Enemy mode handling
+            if (editorMode === 'enemies') {
+                if (e.button === 0) { // Left click - place enemy
+                    // Check if enemy exists at this location
+                    const existingIndex = findEnemyAt(x, y);
+                    if (existingIndex >= 0) {
+                        // Select existing enemy
+                        selectedEnemy = existingIndex;
+                        updateEnemyList();
+                    } else {
+                        // Place new enemy
+                        placeEnemy(x, y);
+                    }
+                }
+                render();
+                return;
+            }
+
+            // Tile mode handling
+            isDrawing = true;
             saveHistory();
 
             if (currentTool === 'brush') {
@@ -1455,13 +1724,37 @@
             validate();
         });
 
+        // Right-click to delete enemies
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (editorMode === 'enemies') {
+                const { x, y } = getTileCoords(e);
+                const enemyIndex = findEnemyAt(x, y);
+                if (enemyIndex >= 0) {
+                    deleteEnemy(enemyIndex);
+                }
+            }
+        });
+
         canvas.addEventListener('mousemove', (e) => {
             const { x, y } = getTileCoords(e);
             const tiles = TILES[worldType];
             const tileName = tiles[level[y]?.[x] || 0]?.name || 'Unknown';
-            document.getElementById('canvasInfo').textContent = `Position: (${x}, ${y}) | Tile: ${tileName}`;
 
-            if (!isDrawing) return;
+            // Show enemy info if in enemy mode and hovering over an enemy
+            let enemyInfo = '';
+            if (editorMode === 'enemies') {
+                const enemyIndex = findEnemyAt(x, y);
+                if (enemyIndex >= 0) {
+                    const e = enemies[enemyIndex];
+                    const typeName = e.variant === 'shadow' ? 'Shadow' : e.type;
+                    enemyInfo = ` | Enemy: ${typeName}`;
+                }
+            }
+
+            document.getElementById('canvasInfo').textContent = `Position: (${x}, ${y}) | Tile: ${tileName}${enemyInfo}`;
+
+            if (!isDrawing || editorMode === 'enemies') return;
 
             if (currentTool === 'brush') {
                 setTile(x, y, selectedTile);
@@ -1552,9 +1845,12 @@
         }
 
         function clearLevel() {
-            if (confirm('Clear the entire level?')) {
+            if (confirm('Clear the entire level (including enemies)?')) {
                 saveHistory();
                 initLevel();
+                enemies = [];
+                selectedEnemy = null;
+                updateEnemyList();
                 render();
                 validate();
             }
@@ -1601,6 +1897,7 @@
                 output += `// ${title}\n`;
             }
             output += `// Generated: ${timestamp} | Size: ${gridWidth}x${gridHeight} | Type: ${worldType}\n`;
+            output += '\n// === LEVEL MAP ===\n';
             output += '[\n';
             for (let y = 0; y < gridHeight; y++) {
                 output += '    [';
@@ -1608,6 +1905,26 @@
                 output += ']' + (y < gridHeight - 1 ? ',' : '') + '\n';
             }
             output += ']';
+
+            // Add enemy data if any enemies exist
+            if (enemies.length > 0) {
+                output += '\n\n// === ENEMIES ===\n';
+                output += `// ${enemies.length} enemies total\n`;
+                output += '[\n';
+                enemies.forEach((enemy, i) => {
+                    let enemyStr = `    { x: ${enemy.x}, y: ${enemy.y}, type: '${enemy.type}'`;
+                    if (enemy.patrol) {
+                        enemyStr += `, patrol: '${enemy.patrol}', range: ${enemy.range}`;
+                    }
+                    enemyStr += `, speed: ${enemy.speed}`;
+                    if (enemy.variant) {
+                        enemyStr += `, variant: '${enemy.variant}'`;
+                    }
+                    enemyStr += ' }' + (i < enemies.length - 1 ? ',' : '');
+                    output += enemyStr + '\n';
+                });
+                output += ']';
+            }
 
             document.getElementById('exportOutput').value = output;
             document.getElementById('exportModal').classList.add('active');
@@ -1761,6 +2078,26 @@
                 valid: hasBorder,
                 warning: !hasBorder,
                 text: hasBorder ? 'Wall border: Complete' : 'Wall border: Missing'
+            });
+
+            // Enemy count
+            const patrolCount = enemies.filter(e => e.type === 'patrol' && !e.variant).length;
+            const shadowCount = enemies.filter(e => e.variant === 'shadow').length;
+            const chaseCount = enemies.filter(e => e.type === 'chase').length;
+            const voidorbCount = enemies.filter(e => e.type === 'voidorb').length;
+
+            let enemyText = `Enemies: ${enemies.length}`;
+            if (enemies.length > 0) {
+                const parts = [];
+                if (patrolCount) parts.push(`${patrolCount} patrol`);
+                if (shadowCount) parts.push(`${shadowCount} shadow`);
+                if (chaseCount) parts.push(`${chaseCount} chase`);
+                if (voidorbCount) parts.push(`${voidorbCount} voidorb`);
+                enemyText += ` (${parts.join(', ')})`;
+            }
+            items.push({
+                valid: true,
+                text: enemyText
             });
 
             validation.innerHTML = items.map(item =>

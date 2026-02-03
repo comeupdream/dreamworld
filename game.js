@@ -2319,7 +2319,6 @@ function startDevGame() {
 
     // Set starting world
     GameState.currentWorld = GameState.devWorld;
-    console.log(`DEV: Set currentWorld to ${GameState.currentWorld}`);
 
     // Give player some resources for testing
     GameState.health = 5;
@@ -2337,41 +2336,10 @@ function startDevGame() {
     }
 
     Player.init();
-
-    // Spawn at correct location based on world
-    if (GameState.devWorld === 'dream') {
-        // Find portal in dream world and spawn there
-        const dreamTiles = Levels.dreamWorld;
-        const portal = findTilePosition(dreamTiles, 2);
-        if (portal.found) {
-            Player.gridX = portal.x;
-            Player.gridY = portal.y;
-            Player.x = portal.x * TILE_SIZE + 2;
-            Player.y = portal.y * TILE_SIZE + 2;
-        }
-        DreamCamera.snapTo(Player.x, Player.y, Player.width, Player.height);
-    } else {
-        // Find door in real world room and spawn there
-        const realTiles = Levels.realWorld;
-        // Look for spawn point (7), door (3), or open door (5)
-        let spawn = findTilePosition(realTiles, 7);
-        if (!spawn.found) spawn = findTilePosition(realTiles, 3);
-        if (!spawn.found) spawn = findTilePosition(realTiles, 5);
-        if (spawn.found) {
-            Player.gridX = spawn.x;
-            Player.gridY = spawn.y;
-            Player.x = spawn.x * TILE_SIZE + 2;
-            Player.y = spawn.y * TILE_SIZE + 2;
-        }
-        // Update camera for real world
-        const maxCameraX = Math.max(0, realTiles[0].length * TILE_SIZE - GAME_WIDTH);
-        GameState.cameraX = Math.max(0, Math.min(maxCameraX, Player.x - GAME_WIDTH / 2));
-    }
-
     spawnEnemies();
     updateUI();
 
-    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}, CurrentWorld: ${GameState.currentWorld}`);
+    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}`);
 }
 
 document.addEventListener('keyup', (e) => {

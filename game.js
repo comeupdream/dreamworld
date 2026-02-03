@@ -2099,7 +2099,14 @@ const GameState = {
     hasCrystalArmor: false, // Crystal Armor from dream world chest - 50% damage reduction
     // Title screen
     titleSelection: 0,  // 0 = Start from Level 1, 1 = Start from Level 4
-    act1Complete: false // True after beating level 3 boss (persisted)
+    act1Complete: false, // True after beating level 3 boss (persisted)
+    // Dev menu
+    devMenuActive: false,  // Toggle dev mode with 'D' key on title
+    devLevel: 1,           // Selected level (1-6)
+    devRoom: 0,            // Selected room (0-2)
+    devWorld: 'real',      // 'real' or 'dream'
+    devSelection: 0,       // 0=level, 1=room, 2=world, 3=start
+    pauseSelection: 0      // Pause menu selection
 };
 
 // Load act1 completion from localStorage
@@ -2123,46 +2130,60 @@ const HOLD_THRESHOLD = 100; // ms before continuous movement activates
 document.addEventListener('keydown', (e) => {
     // Handle title screen input
     if (GameState.screenState === 'title') {
-        // Arrow keys to select option
-        if (e.code === 'ArrowUp') {
-            GameState.titleSelection = (GameState.titleSelection - 1 + 3) % 3;
+        // Toggle dev mode with D key
+        if (e.code === 'KeyD') {
+            GameState.devMenuActive = !GameState.devMenuActive;
+            GameState.devSelection = 0;
             Audio8Bit.init();
             Audio8Bit.playPickup();
             e.preventDefault();
             return;
         }
-        if (e.code === 'ArrowDown') {
-            GameState.titleSelection = (GameState.titleSelection + 1) % 3;
-            Audio8Bit.init();
-            Audio8Bit.playPickup();
+
+        if (GameState.devMenuActive) {
+            // Dev menu navigation
+            if (e.code === 'ArrowUp') {
+                GameState.devSelection = (GameState.devSelection - 1 + 4) % 4;
+                Audio8Bit.init();
+                Audio8Bit.playPickup();
+            } else if (e.code === 'ArrowDown') {
+                GameState.devSelection = (GameState.devSelection + 1) % 4;
+                Audio8Bit.init();
+                Audio8Bit.playPickup();
+            } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                const dir = e.code === 'ArrowRight' ? 1 : -1;
+                Audio8Bit.init();
+                Audio8Bit.playPickup();
+
+                if (GameState.devSelection === 0) {
+                    // Level (1-6)
+                    GameState.devLevel = Math.max(1, Math.min(6, GameState.devLevel + dir));
+                } else if (GameState.devSelection === 1) {
+                    // Room (0-2)
+                    GameState.devRoom = Math.max(0, Math.min(2, GameState.devRoom + dir));
+                } else if (GameState.devSelection === 2) {
+                    // World toggle
+                    GameState.devWorld = GameState.devWorld === 'real' ? 'dream' : 'real';
+                }
+            } else if (e.code === 'Enter' || e.code === 'Space') {
+                if (GameState.devSelection === 3) {
+                    // Start with dev settings
+                    startDevGame();
+                }
+            }
             e.preventDefault();
             return;
         }
+
+        // Regular title screen - just start game
         if (e.code === 'Enter' || e.code === 'Space') {
             GameState.screenState = 'playing';
             Audio8Bit.init();
             Audio8Bit.startMusic();
-            // Level 4 start
-            if (GameState.titleSelection === 1) {
-                Levels.loadLevel(4);
-                GameState.bossDefeated[3] = true;
-                GameState.coins = 200;
-                Player.init();
-                spawnEnemies();
-                updateUI();
-            }
-            // Level 6 start (DEBUG)
-            if (GameState.titleSelection === 2) {
-                Levels.loadLevel(6);
-                GameState.bossDefeated[3] = true;
-                GameState.bossDefeated[5] = true;
-                GameState.coins = 500;
-                GameState.health = 5;
-                GameState.maxHealth = 5;
-                Player.init();
-                spawnEnemies();
-                updateUI();
-            }
+            Levels.loadLevel(1);
+            Player.init();
+            spawnEnemies();
+            updateUI();
             e.preventDefault();
         }
         return;
@@ -2264,6 +2285,45 @@ function restartGame() {
     GameState.inShop = false;
     spawnEnemies();
     updateUI();
+}
+
+// Start game with dev menu settings
+function startDevGame() {
+    GameState.screenState = 'playing';
+    Audio8Bit.init();
+    Audio8Bit.startMusic();
+
+    // Load selected level
+    Levels.loadLevel(GameState.devLevel);
+
+    // Switch to selected room if available
+    if (GameState.devRoom > 0 && Levels.realWorldRooms[GameState.devRoom]) {
+        Levels.switchRoom(GameState.devRoom);
+    }
+
+    // Set starting world
+    GameState.currentWorld = GameState.devWorld;
+
+    // Give player some resources for testing
+    GameState.health = 5;
+    GameState.maxHealth = 5;
+    GameState.lives = 9;
+    GameState.coins = 500;
+    GameState.hasCrystalArmor = true;
+
+    // Mark previous bosses as defeated if starting at higher levels
+    if (GameState.devLevel >= 4) {
+        GameState.bossDefeated[3] = true;
+    }
+    if (GameState.devLevel >= 6) {
+        GameState.bossDefeated[5] = true;
+    }
+
+    Player.init();
+    spawnEnemies();
+    updateUI();
+
+    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}`);
 }
 
 document.addEventListener('keyup', (e) => {
@@ -6117,60 +6177,51 @@ function drawTitleScreen() {
     ctx.textAlign = 'center';
     ctx.fillText('A Dual-Perspective Adventure', GAME_WIDTH / 2, startY + 70);
 
-    // Menu options - always show all 3 for testing
-    const options = ['LEVEL 1', 'LEVEL 4', 'LEVEL 6 (DEBUG)'];
+    // Dev Menu or Regular Menu
+    if (GameState.devMenuActive) {
+        drawDevMenu(time);
+    } else {
+        // Simple start button
+        const btnWidth = 180;
+        const btnHeight = 45;
+        const btnX = (GAME_WIDTH - btnWidth) / 2;
+        const btnY = 300;
 
-    const btnWidth = 180;
-    const btnHeight = 35;
-    const btnX = (GAME_WIDTH - btnWidth) / 2;
-    const startBtnY = 290;
+        const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
+        ctx.shadowColor = '#ff69b4';
+        ctx.shadowBlur = 20 * glowIntensity;
 
-    for (let i = 0; i < options.length; i++) {
-        const btnY = startBtnY + i * 42;
-        const isSelected = GameState.titleSelection === i;
-
-        // Button glow for selected
-        if (isSelected) {
-            const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
-            ctx.shadowColor = '#ff69b4';
-            ctx.shadowBlur = 20 * glowIntensity;
-        }
-
-        // Button background
-        ctx.fillStyle = isSelected ? '#9932cc' : '#4a1070';
+        ctx.fillStyle = '#9932cc';
         ctx.fillRect(btnX, btnY, btnWidth, btnHeight);
-
-        // Button border
-        ctx.fillStyle = isSelected ? '#ff69b4' : '#6a3090';
+        ctx.fillStyle = '#ff69b4';
         ctx.fillRect(btnX, btnY, btnWidth, 3);
         ctx.fillRect(btnX, btnY, 3, btnHeight);
-        ctx.fillStyle = isSelected ? '#4a1070' : '#2a0040';
+        ctx.fillStyle = '#4a1070';
         ctx.fillRect(btnX, btnY + btnHeight - 3, btnWidth, 3);
         ctx.fillRect(btnX + btnWidth - 3, btnY, 3, btnHeight);
-
         ctx.shadowBlur = 0;
 
-        // Button text
-        ctx.fillStyle = isSelected ? '#fff' : '#999';
-        ctx.font = 'bold 16px Courier New';
-        ctx.fillText(options[i], GAME_WIDTH / 2, btnY + 23);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 18px Courier New';
+        ctx.fillText('START GAME', GAME_WIDTH / 2, btnY + 28);
 
-        // Selection arrow
-        if (isSelected) {
-            ctx.fillStyle = '#ff69b4';
-            ctx.fillText('>', btnX - 20, btnY + 23);
-        }
+        // Dev mode hint
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 12px Courier New';
+        ctx.fillText('Press D for DEV MODE', GAME_WIDTH / 2, btnY + 70);
     }
 
     // Controls hint
     const hintY = 430;
     ctx.fillStyle = '#888';
     ctx.font = '12px Courier New';
-    ctx.fillText('UP/DOWN to select, ENTER to start', GAME_WIDTH / 2, hintY);
-    if (false) {
+    if (GameState.devMenuActive) {
+        ctx.fillText('UP/DOWN: select | LEFT/RIGHT: change | ENTER: start', GAME_WIDTH / 2, hintY);
+        ctx.fillText('D: exit dev mode', GAME_WIDTH / 2, hintY + 20);
+    } else {
         ctx.fillText('Press ENTER or SPACE to start', GAME_WIDTH / 2, hintY);
+        ctx.fillText('ESC to pause during game', GAME_WIDTH / 2, hintY + 20);
     }
-    ctx.fillText('ESC to pause during game', GAME_WIDTH / 2, hintY + 20);
 
     // Controls info
     ctx.fillStyle = '#666';
@@ -6179,6 +6230,67 @@ function drawTitleScreen() {
     ctx.fillText('Z: World Power | 1-3: Use Items | E: Enter Doors', GAME_WIDTH / 2, 500);
 
     ctx.textAlign = 'left';
+}
+
+function drawDevMenu(time) {
+    const menuX = GAME_WIDTH / 2;
+    const startY = 270;
+    const rowHeight = 35;
+
+    ctx.textAlign = 'center';
+
+    // Dev mode header
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 14px Courier New';
+    ctx.fillText('=== DEV MODE ===', menuX, startY - 15);
+
+    const options = [
+        { label: 'LEVEL', value: GameState.devLevel, min: 1, max: 6 },
+        { label: 'ROOM', value: GameState.devRoom, min: 0, max: 2 },
+        { label: 'WORLD', value: GameState.devWorld === 'real' ? 'REAL' : 'DREAM', isWorld: true },
+        { label: '[ START ]', isButton: true }
+    ];
+
+    for (let i = 0; i < options.length; i++) {
+        const opt = options[i];
+        const y = startY + i * rowHeight;
+        const isSelected = GameState.devSelection === i;
+
+        // Selection highlight
+        if (isSelected) {
+            const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
+            ctx.fillStyle = `rgba(255, 100, 100, ${0.3 * glowIntensity})`;
+            ctx.fillRect(menuX - 120, y - 12, 240, 28);
+        }
+
+        if (opt.isButton) {
+            // Start button
+            ctx.fillStyle = isSelected ? '#00ff00' : '#00aa00';
+            ctx.font = 'bold 16px Courier New';
+            ctx.fillText(opt.label, menuX, y + 5);
+        } else {
+            // Label
+            ctx.fillStyle = isSelected ? '#fff' : '#888';
+            ctx.font = 'bold 14px Courier New';
+            ctx.fillText(opt.label + ':', menuX - 60, y + 5);
+
+            // Value with arrows
+            ctx.fillStyle = isSelected ? '#ffff00' : '#aaa';
+            if (isSelected) {
+                ctx.fillText('<', menuX + 20, y + 5);
+                ctx.fillText('>', menuX + 80, y + 5);
+            }
+            ctx.fillStyle = isSelected ? '#fff' : '#ccc';
+            ctx.font = 'bold 16px Courier New';
+            ctx.fillText(opt.value, menuX + 50, y + 5);
+        }
+
+        // Selection arrow
+        if (isSelected) {
+            ctx.fillStyle = '#ff4444';
+            ctx.fillText('>', menuX - 110, y + 5);
+        }
+    }
 }
 
 function drawGameOver() {

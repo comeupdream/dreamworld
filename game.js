@@ -2319,6 +2319,7 @@ function startDevGame() {
 
     // Set starting world
     GameState.currentWorld = GameState.devWorld;
+    console.log(`DEV: Set currentWorld to ${GameState.currentWorld}`);
 
     // Give player some resources for testing
     GameState.health = 5;
@@ -2370,7 +2371,7 @@ function startDevGame() {
     spawnEnemies();
     updateUI();
 
-    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}`);
+    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}, CurrentWorld: ${GameState.currentWorld}`);
 }
 
 document.addEventListener('keyup', (e) => {

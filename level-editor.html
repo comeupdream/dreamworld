@@ -388,8 +388,8 @@
 
         <div class="world-type-header">SELECT WORLD TYPE</div>
         <div class="world-toggle">
-            <button id="realWorldBtn" class="btn-secondary active" onclick="setWorldType('real')">REAL WORLD</button>
-            <button id="dreamWorldBtn" class="btn-secondary" onclick="setWorldType('dream')">DREAM WORLD</button>
+            <button id="realWorldBtn" class="active" onclick="setWorldType('real')" style="background: linear-gradient(135deg, #0088ff, #0066cc); color: white;">REAL WORLD</button>
+            <button id="dreamWorldBtn" onclick="setWorldType('dream')" style="background: #4a2a6a; color: #dd88ff;">DREAM WORLD</button>
         </div>
 
         <h2>Random Generate</h2>
@@ -997,8 +997,24 @@
 
         function setWorldType(type) {
             worldType = type;
-            document.getElementById('realWorldBtn').classList.toggle('active', type === 'real');
-            document.getElementById('dreamWorldBtn').classList.toggle('active', type === 'dream');
+            const realBtn = document.getElementById('realWorldBtn');
+            const dreamBtn = document.getElementById('dreamWorldBtn');
+
+            realBtn.classList.toggle('active', type === 'real');
+            dreamBtn.classList.toggle('active', type === 'dream');
+
+            // Update button styles for visibility
+            if (type === 'real') {
+                realBtn.style.background = 'linear-gradient(135deg, #0088ff, #0066cc)';
+                realBtn.style.color = 'white';
+                dreamBtn.style.background = '#4a2a6a';
+                dreamBtn.style.color = '#dd88ff';
+            } else {
+                realBtn.style.background = '#2a4a6a';
+                realBtn.style.color = '#88ccff';
+                dreamBtn.style.background = 'linear-gradient(135deg, #aa00ff, #8800cc)';
+                dreamBtn.style.color = 'white';
+            }
 
             // Adjust default size
             if (type === 'dream') {

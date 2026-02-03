@@ -2916,15 +2916,28 @@ const Player = {
     },
 
     respawnInDreamWorld() {
-        this.gridX = 1;
-        this.gridY = 1;
+        // Find portal (tile 2) in dream world to spawn at
+        const dreamTiles = Levels.dreamWorld;
+        const portal = findTilePosition(dreamTiles, 2);
+
+        if (portal.found) {
+            this.gridX = portal.x;
+            this.gridY = portal.y;
+        } else {
+            // Fallback if no portal found
+            this.gridX = 1;
+            this.gridY = 1;
+        }
+
         this.x = this.gridX * TILE_SIZE + 2;
         this.y = this.gridY * TILE_SIZE + 2;
         this.isJumping = false;
         this.isFalling = false;
         this.isMoving = false;
         this.fallSpeed = 0;
-        GameState.cameraX = 0;
+
+        // Snap camera to player at portal
+        DreamCamera.snapTo(this.x, this.y, this.width, this.height);
     },
 
     takeDamage() {
@@ -5263,14 +5276,15 @@ const DreamWorld = {
                 ctx.fillRect(px + 1, py + TILE_SIZE - 3*s, TILE_SIZE - 2, 2*s);
                 break;
             case 2:
-                ctx.fillStyle = '#33ff99';
+                // Portal - purple swirling effect (matches real world portal)
+                ctx.fillStyle = '#8844aa';
                 ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = '#66ffbb';
+                ctx.fillStyle = '#aa66cc';
                 const pulse = 6*s + Math.sin(Date.now() / 200) * 3*s;
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, pulse, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = '#dd99ff';
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, 2*s, 0, Math.PI * 2);
                 ctx.fill();

@@ -2317,6 +2317,42 @@ function exportLevelData() {
     }
     output += ']';
 
+    // Add enemy data
+    const currentRoom = GameState.currentRoom;
+    const roomEnemies = GameState.enemies.filter(e => {
+        if (isReal) {
+            return e.room === undefined || e.room === currentRoom;
+        }
+        return true; // Dream world - all enemies
+    });
+
+    if (roomEnemies.length > 0) {
+        output += '\n\n// === ENEMIES ===\n';
+        output += `// ${roomEnemies.length} enemies\n`;
+        output += '[\n';
+        roomEnemies.forEach((e, i) => {
+            // Convert pixel position back to tile position
+            const tileX = Math.floor(e.x / TILE_SIZE);
+            const tileY = Math.floor(e.y / TILE_SIZE);
+
+            let enemyStr = `    { x: ${tileX}, y: ${tileY}, type: '${e.type}'`;
+            if (e.patrol) {
+                enemyStr += `, patrol: '${e.patrol}', range: ${e.range || 4}`;
+            }
+            enemyStr += `, speed: ${e.speed || 1.2}`;
+            if (e.variant && e.variant !== 'normal') {
+                enemyStr += `, variant: '${e.variant}'`;
+            }
+            if (e.allowedTiles && e.allowedTiles.length > 0) {
+                const tilesStr = e.allowedTiles.map(t => `{x:${t.x},y:${t.y}}`).join(', ');
+                enemyStr += `, allowedTiles: [${tilesStr}]`;
+            }
+            enemyStr += ' }' + (i < roomEnemies.length - 1 ? ',' : '');
+            output += enemyStr + '\n';
+        });
+        output += ']';
+    }
+
     // Try to copy to clipboard
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(output).then(() => {

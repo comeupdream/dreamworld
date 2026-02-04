@@ -2345,13 +2345,11 @@ function startDevGame() {
         GameState.bossDefeated[5] = true;
     }
 
-    // DEBUG: Show what world was selected
-    alert(`devWorld = "${GameState.devWorld}"`);
-
     // Set starting world and spawn player at correct location
     if (GameState.devWorld === 'dream') {
-        // Dream world: spawn at portal (tile 2) - same logic as switchWorld()
+        // Dream world: spawn at portal (tile 2)
         GameState.currentWorld = 'dream';
+        alert('ENTERED DREAM BRANCH - currentWorld is now: ' + GameState.currentWorld);
         const dreamTiles = Levels.getDream();
         const portal = findTilePosition(dreamTiles, 2);
 
@@ -2382,6 +2380,7 @@ function startDevGame() {
     } else {
         // Real world: spawn at door (tile 5)
         GameState.currentWorld = 'real';
+        alert('ENTERED REAL BRANCH - devWorld was: ' + GameState.devWorld);
         const realTiles = Levels.getReal();
         let spawnX = 2, spawnY = 2;
 

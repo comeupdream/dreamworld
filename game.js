@@ -6091,6 +6091,88 @@ function drawPauseButton() {
     ctx.textAlign = 'left';
 }
 
+function drawMinimap() {
+    // Only show in real world during gameplay
+    if (GameState.currentWorld !== 'real') return;
+
+    const tiles = Levels.getReal();
+    if (!tiles || !tiles[0]) return;
+
+    const mapWidth = tiles[0].length;
+    const mapHeight = tiles.length;
+
+    // Calculate scale to fit minimap in ~100px max dimension
+    const maxSize = 100;
+    const scale = Math.min(maxSize / mapWidth, maxSize / mapHeight);
+    const minimapW = Math.floor(mapWidth * scale);
+    const minimapH = Math.floor(mapHeight * scale);
+
+    // Position: top-left, below power-up indicators (around y=70 to avoid overlap)
+    const minimapX = 5;
+    const minimapY = REAL_WORLD_Y_OFFSET + 70;
+
+    // Background with border
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(minimapX - 2, minimapY - 2, minimapW + 4, minimapH + 4);
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(minimapX - 2, minimapY - 2, minimapW + 4, minimapH + 4);
+
+    // Draw tiles
+    for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+            const tile = tiles[y][x];
+            let color;
+
+            switch (tile) {
+                case 0: color = '#1a1a0a'; break; // Floor - dark
+                case 1: color = '#ff6600'; break; // Wall - orange
+                case 2: color = '#9933ff'; break; // Portal - purple
+                case 3: color = '#cc5500'; break; // Goal lock
+                case 4: color = '#FFD700'; break; // Key - gold
+                case 5: color = '#994400'; break; // Open door
+                case 6: color = '#00ff66'; break; // Exit - green
+                case 7: color = '#995522'; break; // Room door
+                case 8: color = '#1a4a6e'; break; // Water
+                case 9: color = '#8B4513'; break; // Bridge
+                case 10: color = '#6a3a1a'; break; // Locked door
+                default: color = '#1a1a0a';
+            }
+
+            ctx.fillStyle = color;
+            ctx.fillRect(
+                minimapX + x * scale,
+                minimapY + y * scale,
+                Math.max(1, scale),
+                Math.max(1, scale)
+            );
+        }
+    }
+
+    // Draw enemies as red dots (only in current room)
+    const currentRoom = GameState.currentRoom;
+    for (const enemy of GameState.enemies) {
+        if (enemy.room !== undefined && enemy.room !== currentRoom) continue;
+
+        const ex = minimapX + (enemy.x / TILE_SIZE) * scale;
+        const ey = minimapY + (enemy.y / TILE_SIZE) * scale;
+
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(ex + scale/2, ey + scale/2, Math.max(2, scale * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Draw player as green dot
+    const px = minimapX + (Player.x / TILE_SIZE) * scale;
+    const py = minimapY + (Player.y / TILE_SIZE) * scale;
+
+    ctx.fillStyle = '#00ff00';
+    ctx.beginPath();
+    ctx.arc(px + scale/2, py + scale/2, Math.max(2, scale * 0.8), 0, Math.PI * 2);
+    ctx.fill();
+}
+
 // ============================================
 // GAME LOOP
 // ============================================
@@ -6140,6 +6222,7 @@ function draw() {
     // UI elements (fixed on screen, no camera offset)
     drawWorldIndicator();
     drawPowerUpStatus();
+    drawMinimap();
     drawMessage();
     drawPauseButton();
 

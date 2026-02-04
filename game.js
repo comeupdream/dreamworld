@@ -3577,13 +3577,15 @@ function updateEnemies() {
 
         let blockedX = false;
         let blockedY = false;
+        // Tile 9 is one-way platform in dream world, but passable bridge in real world
+        const isDream = GameState.currentWorld === 'dream';
 
         // Check X movement
         for (let ty = Math.floor(enemy.y / TILE_SIZE); ty <= Math.floor((enemy.y + enemy.height) / TILE_SIZE) && !blockedX; ty++) {
             for (let tx = leftTile; tx <= rightTile && !blockedX; tx++) {
                 if (ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length) {
                     const tile = tiles[ty][tx];
-                    if (tile === 1 || tile === 3 || tile === 6 || tile === 9) blockedX = true; // 9 = one-way platform
+                    if (tile === 1 || tile === 3 || tile === 6 || (tile === 9 && isDream)) blockedX = true;
                 } else {
                     blockedX = true;
                 }
@@ -3595,7 +3597,7 @@ function updateEnemies() {
             for (let tx = Math.floor(enemy.x / TILE_SIZE); tx <= Math.floor((enemy.x + enemy.width) / TILE_SIZE) && !blockedY; tx++) {
                 if (ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length) {
                     const tile = tiles[ty][tx];
-                    if (tile === 1 || tile === 3 || tile === 6 || tile === 9) blockedY = true; // 9 = one-way platform
+                    if (tile === 1 || tile === 3 || tile === 6 || (tile === 9 && isDream)) blockedY = true;
                 } else {
                     blockedY = true;
                 }

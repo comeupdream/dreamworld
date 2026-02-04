@@ -1984,14 +1984,14 @@ const LevelTemplates = {
             ],
             3: [
                 // Level 3 Dream World: 60x20 with 8 enemies
-                { x: 25, y: 13, type: 'patrol', patrol: 'vertical', range: 4, speed: 1.2 },
-                { x: 34, y: 12, type: 'patrol', patrol: 'vertical', range: 4, speed: 1.2 },
-                { x: 23, y: 1, type: 'patrol', patrol: 'horizontal', range: 7, speed: 1.8 },
-                { x: 15, y: 12, type: 'patrol', patrol: 'horizontal', range: 7, speed: 1.8 },
-                { x: 47, y: 4, type: 'patrol', patrol: 'horizontal', range: 7, speed: 1.8 },
-                { x: 57, y: 8, type: 'patrol', patrol: 'vertical', range: 7, speed: 1.8 },
-                { x: 7, y: 3, type: 'voidorb', speed: 1.8 },
-                { x: 42, y: 15, type: 'voidorb', speed: 1.8 }
+                { x: 21, y: 4, type: 'shadow', speed: 1.2, allowedTiles: [{x:21,y:4}, {x:20,y:4}, {x:19,y:4}, {x:18,y:4}, {x:18,y:6}, {x:18,y:5}, {x:17,y:5}, {x:17,y:6}, {x:16,y:6}, {x:16,y:5}, {x:19,y:5}, {x:19,y:6}, {x:20,y:6}, {x:20,y:5}, {x:20,y:3}] },
+                { x: 24, y: 10, type: 'shadow', speed: 1.2, allowedTiles: [{x:24,y:10}, {x:25,y:10}, {x:25,y:11}, {x:25,y:12}, {x:25,y:13}, {x:25,y:14}, {x:25,y:15}, {x:26,y:15}, {x:27,y:15}, {x:27,y:14}, {x:27,y:13}, {x:26,y:13}, {x:24,y:13}, {x:23,y:13}, {x:23,y:14}, {x:23,y:16}, {x:23,y:15}, {x:24,y:16}, {x:25,y:16}, {x:26,y:16}, {x:27,y:16}, {x:27,y:12}] },
+                { x: 38, y: 3, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 37, y: 15, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 7, y: 2, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 25, y: 1, type: 'patrol', patrol: 'horizontal', range: 4, speed: 1.2 },
+                { x: 51, y: 5, type: 'voidorb', speed: 1.2 },
+                { x: 35, y: 18, type: 'voidorb', speed: 1.2 }
             ],
             // Level 4: 15% harder than L1
             4: [

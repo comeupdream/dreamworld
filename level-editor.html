@@ -2142,9 +2142,12 @@
         }
 
         function importLevel() {
-            const input = document.getElementById('importInput').value.trim();
+            let input = document.getElementById('importInput').value.trim();
 
             try {
+                // Strip comment lines (// ...) before parsing
+                input = input.split('\n').filter(line => !line.trim().startsWith('//')).join('\n');
+
                 // Try to parse as JSON array
                 const parsed = JSON.parse(input);
 

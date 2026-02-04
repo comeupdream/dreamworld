@@ -2145,6 +2145,74 @@ try {
     GameState.act1Complete = localStorage.getItem('dreamworld_act1') === 'true';
 } catch (e) {}
 
+// Matrix rain effect state for right panel
+const MatrixRain = {
+    columns: [],
+    chars: 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789',
+    fontSize: 10,
+    init() {
+        const columnCount = Math.floor(MINIMAP_AREA_WIDTH / this.fontSize);
+        this.columns = [];
+        for (let i = 0; i < columnCount; i++) {
+            this.columns.push({
+                y: Math.random() * GAME_HEIGHT,
+                speed: 1 + Math.random() * 3,
+                chars: []
+            });
+            // Pre-fill with random chars
+            const charCount = Math.floor(GAME_HEIGHT / this.fontSize);
+            for (let j = 0; j < charCount; j++) {
+                this.columns[i].chars.push(this.chars[Math.floor(Math.random() * this.chars.length)]);
+            }
+        }
+    },
+    update() {
+        for (const col of this.columns) {
+            col.y += col.speed;
+            if (col.y > GAME_HEIGHT + 50) {
+                col.y = -20;
+                col.speed = 1 + Math.random() * 3;
+            }
+            // Occasionally change a character
+            if (Math.random() < 0.02) {
+                const idx = Math.floor(Math.random() * col.chars.length);
+                col.chars[idx] = this.chars[Math.floor(Math.random() * this.chars.length)];
+            }
+        }
+    },
+    draw() {
+        ctx.font = `${this.fontSize}px monospace`;
+
+        for (let i = 0; i < this.columns.length; i++) {
+            const col = this.columns[i];
+            const x = GAME_WIDTH + 2 + i * this.fontSize;
+
+            for (let j = 0; j < col.chars.length; j++) {
+                const y = (col.y + j * this.fontSize) % (GAME_HEIGHT + this.fontSize * 5) - this.fontSize * 5;
+                if (y < -this.fontSize || y > GAME_HEIGHT) continue;
+
+                // Fade based on position in trail
+                const distFromHead = j;
+                const alpha = Math.max(0.05, 1 - distFromHead * 0.08);
+
+                // Head of trail is brighter
+                if (j === 0) {
+                    ctx.fillStyle = '#ffffff';
+                } else if (j < 3) {
+                    ctx.fillStyle = `rgba(100, 255, 100, ${alpha})`;
+                } else {
+                    ctx.fillStyle = `rgba(0, 180, 0, ${alpha * 0.7})`;
+                }
+
+                ctx.fillText(col.chars[j], x, y);
+            }
+        }
+    }
+};
+
+// Initialize matrix rain
+MatrixRain.init();
+
 // ============================================
 // INPUT HANDLING
 // ============================================
@@ -6288,9 +6356,18 @@ function draw() {
         return;
     }
 
-    // Draw minimap area background (right side panel)
-    ctx.fillStyle = '#0d0d15';
+    // Draw minimap area background (right side panel) with Matrix rain
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(GAME_WIDTH, 0, MINIMAP_AREA_WIDTH, GAME_HEIGHT);
+
+    // Update and draw Matrix rain effect
+    MatrixRain.update();
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(GAME_WIDTH, 0, MINIMAP_AREA_WIDTH, GAME_HEIGHT);
+    ctx.clip();
+    MatrixRain.draw();
+    ctx.restore();
 
     // Draw BOTH worlds (split-screen layout)
     RealWorld.draw();   // Top half

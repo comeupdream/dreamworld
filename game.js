@@ -6307,9 +6307,21 @@ function drawDevMenu(time) {
     ctx.font = 'bold 14px Courier New';
     ctx.fillText('=== DEV MODE ===', menuX, startY - 15);
 
+    // Check if current room has a portal (tile 2)
+    const levelTemplate = LevelTemplates.realWorld[GameState.devLevel];
+    let roomHasPortal = false;
+    if (levelTemplate && levelTemplate.rooms && levelTemplate.rooms[GameState.devRoom]) {
+        const roomTiles = levelTemplate.rooms[GameState.devRoom];
+        for (let y = 0; y < roomTiles.length && !roomHasPortal; y++) {
+            for (let x = 0; x < roomTiles[y].length && !roomHasPortal; x++) {
+                if (roomTiles[y][x] === 2) roomHasPortal = true;
+            }
+        }
+    }
+
     const options = [
         { label: 'LEVEL', value: GameState.devLevel, min: 1, max: 6 },
-        { label: 'ROOM', value: GameState.devRoom, min: 0, max: 2 },
+        { label: 'ROOM', value: GameState.devRoom, min: 0, max: 2, hasPortal: roomHasPortal },
         { label: 'WORLD', value: GameState.devWorld === 'real' ? 'REAL' : 'DREAM', isWorld: true },
         { label: '[ START ]', isButton: true }
     ];
@@ -6318,6 +6330,16 @@ function drawDevMenu(time) {
         const opt = options[i];
         const y = startY + i * rowHeight;
         const isSelected = GameState.devSelection === i;
+
+        // Portal room glow effect (purple to red)
+        if (opt.hasPortal) {
+            const portalGlow = Math.sin(time * 3) * 0.5 + 0.5; // 0 to 1
+            const r = Math.floor(128 + 127 * portalGlow);
+            const g = Math.floor(0 + 50 * (1 - portalGlow));
+            const b = Math.floor(200 * (1 - portalGlow));
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.4)`;
+            ctx.fillRect(menuX - 120, y - 12, 240, 28);
+        }
 
         // Selection highlight
         if (isSelected) {
@@ -6335,7 +6357,10 @@ function drawDevMenu(time) {
             // Label
             ctx.fillStyle = isSelected ? '#fff' : '#888';
             ctx.font = 'bold 14px Courier New';
-            ctx.fillText(opt.label + ':', menuX - 60, y + 5);
+
+            // Add portal indicator to room label
+            const labelText = opt.hasPortal ? opt.label + ' 🌀' : opt.label + ':';
+            ctx.fillText(labelText, menuX - 60, y + 5);
 
             // Value with arrows
             ctx.fillStyle = isSelected ? '#ffff00' : '#aaa';
@@ -6343,7 +6368,7 @@ function drawDevMenu(time) {
                 ctx.fillText('<', menuX + 20, y + 5);
                 ctx.fillText('>', menuX + 80, y + 5);
             }
-            ctx.fillStyle = isSelected ? '#fff' : '#ccc';
+            ctx.fillStyle = opt.hasPortal ? '#cc66ff' : (isSelected ? '#fff' : '#ccc');
             ctx.font = 'bold 16px Courier New';
             ctx.fillText(opt.value, menuX + 50, y + 5);
         }

@@ -2325,6 +2325,14 @@ function startDevGame() {
     // Load selected level
     Levels.loadLevel(GameState.devLevel);
 
+    // Switch to selected room if available
+    if (GameState.devRoom > 0 && Levels.realWorldRooms[GameState.devRoom]) {
+        Levels.switchRoom(GameState.devRoom);
+    }
+
+    // Set starting world
+    GameState.currentWorld = GameState.devWorld;
+
     // Give player some resources for testing
     GameState.health = 5;
     GameState.maxHealth = 5;
@@ -2340,67 +2348,11 @@ function startDevGame() {
         GameState.bossDefeated[5] = true;
     }
 
-    // Set the world FIRST - this determines everything else
-    GameState.currentWorld = GameState.devWorld;
-
-    if (GameState.currentWorld === 'dream') {
-        // DREAM WORLD: ignore room selection, spawn at dream portal (tile 2)
-        const dreamTiles = Levels.getDream();
-        const portal = findTilePosition(dreamTiles, 2);
-
-        if (portal.found) {
-            Player.gridX = portal.x;
-            Player.gridY = portal.y;
-        } else {
-            Player.gridX = 2;
-            Player.gridY = dreamTiles.length - 3;
-        }
-
-        Player.x = Player.gridX * TILE_SIZE + 2;
-        Player.y = Player.gridY * TILE_SIZE + 2;
-        Player.isMoving = false;
-        Player.isJumping = false;
-        Player.isFalling = false;
-        Player.fallSpeed = 0;
-        Player.facing = 1;
-        Player.facingDir = 'right';
-
-        DreamCamera.snapTo(Player.x, Player.y, Player.width, Player.height);
-    } else {
-        // REAL WORLD: use room selection, spawn at door (tile 5)
-        if (GameState.devRoom > 0 && Levels.realWorldRooms[GameState.devRoom]) {
-            Levels.switchRoom(GameState.devRoom);
-        }
-
-        const realTiles = Levels.getReal();
-        let spawnX = 2, spawnY = 2;
-
-        for (let y = 0; y < realTiles.length; y++) {
-            for (let x = 0; x < realTiles[y].length; x++) {
-                if (realTiles[y][x] === 5) {
-                    spawnX = x;
-                    spawnY = y;
-                    break;
-                }
-            }
-            if (spawnX !== 2 || spawnY !== 2) break;
-        }
-
-        Player.gridX = spawnX;
-        Player.gridY = spawnY;
-        Player.x = Player.gridX * TILE_SIZE + 2;
-        Player.y = Player.gridY * TILE_SIZE + 2;
-        Player.isMoving = false;
-        Player.moveProgress = 0;
-        Player.facingDir = 'down';
-        Player.facing = 1;
-        Player.facingY = 1;
-
-        RealCamera.snapTo(Player.x, Player.y, TILE_SIZE, TILE_SIZE);
-    }
-
+    Player.init();
     spawnEnemies();
     updateUI();
+
+    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}`);
 }
 
 document.addEventListener('keyup', (e) => {

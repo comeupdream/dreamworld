@@ -2345,6 +2345,9 @@ function startDevGame() {
         GameState.bossDefeated[5] = true;
     }
 
+    // DEBUG: Show what world was selected
+    alert(`devWorld = "${GameState.devWorld}"`);
+
     // Set starting world and spawn player at correct location
     if (GameState.devWorld === 'dream') {
         // Dream world: spawn at portal (tile 2) - same logic as switchWorld()

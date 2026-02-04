@@ -2145,11 +2145,22 @@
             let input = document.getElementById('importInput').value.trim();
 
             try {
-                // Strip comment lines (// ...) before parsing
-                input = input.split('\n').filter(line => !line.trim().startsWith('//')).join('\n');
+                // Split into tiles and enemies sections
+                let tilesInput = input;
+                let enemiesInput = null;
 
-                // Try to parse as JSON array
-                const parsed = JSON.parse(input);
+                const enemyMarker = '// === ENEMIES ===';
+                const enemyIndex = input.indexOf(enemyMarker);
+                if (enemyIndex !== -1) {
+                    tilesInput = input.substring(0, enemyIndex).trim();
+                    enemiesInput = input.substring(enemyIndex).trim();
+                }
+
+                // Strip comment lines from tiles section
+                tilesInput = tilesInput.split('\n').filter(line => !line.trim().startsWith('//')).join('\n');
+
+                // Parse tiles
+                const parsed = JSON.parse(tilesInput);
 
                 if (!Array.isArray(parsed) || !Array.isArray(parsed[0])) {
                     throw new Error('Invalid format - must be a 2D array');
@@ -2162,6 +2173,23 @@
 
                 document.getElementById('gridWidth').value = gridWidth;
                 document.getElementById('gridHeight').value = gridHeight;
+
+                // Parse enemies if present
+                if (enemiesInput) {
+                    // Strip comment lines from enemies section
+                    enemiesInput = enemiesInput.split('\n').filter(line => !line.trim().startsWith('//')).join('\n');
+
+                    try {
+                        const parsedEnemies = JSON.parse(enemiesInput);
+                        if (Array.isArray(parsedEnemies)) {
+                            enemies = parsedEnemies;
+                            updateEnemyList();
+                        }
+                    } catch (enemyErr) {
+                        console.warn('Could not parse enemies:', enemyErr);
+                        // Continue without enemies - tiles still imported
+                    }
+                }
 
                 updateCanvasSize();
                 render();

@@ -2180,7 +2180,14 @@
                     enemiesInput = enemiesInput.split('\n').filter(line => !line.trim().startsWith('//')).join('\n');
 
                     try {
-                        const parsedEnemies = JSON.parse(enemiesInput);
+                        // Convert JS object notation to valid JSON:
+                        // 1. Replace single quotes with double quotes
+                        // 2. Quote unquoted property names
+                        let jsonStr = enemiesInput
+                            .replace(/'/g, '"')  // Single quotes to double quotes
+                            .replace(/(\{|\,)\s*(\w+)\s*:/g, '$1"$2":');  // Quote property names
+
+                        const parsedEnemies = JSON.parse(jsonStr);
                         if (Array.isArray(parsedEnemies)) {
                             enemies = parsedEnemies;
                             updateEnemyList();

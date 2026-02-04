@@ -513,7 +513,8 @@
                 { id: 5, name: 'Spike', color: '#cc3333' },
                 { id: 6, name: 'Exit Wall', color: '#00ff66' },
                 { id: 7, name: 'Chest', color: '#8B4513' },
-                { id: 8, name: 'Lock Chest', color: '#654321' }
+                { id: 8, name: 'Lock Chest', color: '#654321' },
+                { id: 9, name: 'One-Way ←', color: '#6633aa' }
             ]
         };
 
@@ -818,6 +819,33 @@
                     ctx.fillRect(px + 1*s, py + 4*s, size - 2*s, size/4);
                     ctx.fillStyle = '#888';
                     ctx.fillRect(px + size/2 - 3*s, py + size/2 - 1*s, 6*s, 8*s);
+                    break;
+                case 9: // One-Way platform (pass through from right, blocked from left)
+                    // Dark background
+                    ctx.fillStyle = '#1a0a2a';
+                    ctx.fillRect(px, py, size, size);
+                    // Purple platform base
+                    ctx.fillStyle = '#4a2a6a';
+                    ctx.fillRect(px, py, size, size);
+                    // Lighter top
+                    ctx.fillStyle = '#5a3a7a';
+                    ctx.fillRect(px + 1*s, py + 1*s, size - 2*s, 4*s);
+                    // Darker bottom
+                    ctx.fillStyle = '#3a1a5a';
+                    ctx.fillRect(px + 1*s, py + size - 3*s, size - 2*s, 2*s);
+                    // Glowing right edge (indicates pass-through direction)
+                    ctx.fillStyle = '#cc66ff';
+                    ctx.fillRect(px + size - 4*s, py, 4*s, size);
+                    ctx.fillStyle = '#ff99ff';
+                    ctx.fillRect(px + size - 2*s, py + 2*s, 2*s, size - 4*s);
+                    // Arrow indicator pointing left
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.moveTo(px + 6*s, py + size/2);
+                    ctx.lineTo(px + 12*s, py + size/2 - 4*s);
+                    ctx.lineTo(px + 12*s, py + size/2 + 4*s);
+                    ctx.closePath();
+                    ctx.fill();
                     break;
             }
         }

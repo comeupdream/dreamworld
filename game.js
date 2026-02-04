@@ -2826,7 +2826,7 @@ const Player = {
     isSolid(x, y, tiles) {
         if (y < 0 || y >= tiles.length || x < 0 || x >= tiles[0].length) return false;
         const tile = tiles[y][x];
-        return tile === 1 || tile === 6;
+        return tile === 1 || tile === 6 || tile === 9; // 9 = one-way platform (solid for standing)
     },
 
     checkFalling(tiles) {
@@ -2878,6 +2878,10 @@ const Player = {
         // Block: wall(1), locked goal(3), water(8), locked door(10)
         if (tile === 1 || tile === 3 || tile === 8 || tile === 10) return false;
 
+        // One-way platform (9): blocks movement to the right, allows movement to the left
+        if (tile === 9 && dx > 0) return false; // Can't walk right into it
+        // Walking left into a one-way tile is allowed (pass through)
+
         this.startX = this.x;
         this.targetGridX = newX;
         this.isMoving = true;
@@ -2891,7 +2895,10 @@ const Player = {
 
         // Check collision at current grid Y
         const checkY = Math.max(0, Math.min(tiles.length - 1, this.gridY));
-        if (tiles[checkY][newX] === 1) return;
+        const tile = tiles[checkY][newX];
+        if (tile === 1) return; // Wall blocks all movement
+        // One-way platform (9): blocks movement to the right, allows movement to the left
+        if (tile === 9 && dx > 0) return; // Can't fly right into it
 
         this.startX = this.x;
         this.targetGridX = newX;
@@ -3422,7 +3429,7 @@ function updateEnemies() {
             for (let tx = leftTile; tx <= rightTile && !blockedX; tx++) {
                 if (ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length) {
                     const tile = tiles[ty][tx];
-                    if (tile === 1 || tile === 3 || tile === 6) blockedX = true;
+                    if (tile === 1 || tile === 3 || tile === 6 || tile === 9) blockedX = true; // 9 = one-way platform
                 } else {
                     blockedX = true;
                 }
@@ -3434,7 +3441,7 @@ function updateEnemies() {
             for (let tx = Math.floor(enemy.x / TILE_SIZE); tx <= Math.floor((enemy.x + enemy.width) / TILE_SIZE) && !blockedY; tx++) {
                 if (ty >= 0 && ty < tiles.length && tx >= 0 && tx < tiles[0].length) {
                     const tile = tiles[ty][tx];
-                    if (tile === 1 || tile === 3 || tile === 6) blockedY = true;
+                    if (tile === 1 || tile === 3 || tile === 6 || tile === 9) blockedY = true; // 9 = one-way platform
                 } else {
                     blockedY = true;
                 }
@@ -5458,6 +5465,32 @@ const DreamWorld = {
                 // Empty inside
                 ctx.fillStyle = '#2a1a0a';
                 ctx.fillRect(px + 4, py + TILE_SIZE/2 + 2, TILE_SIZE - 8, TILE_SIZE/3);
+                break;
+            case 9:
+                // One-Way platform (can pass through from right, blocked from left)
+                // Purple platform base
+                ctx.fillStyle = '#4a2a6a';
+                ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                // Lighter top edge
+                ctx.fillStyle = '#5a3a7a';
+                ctx.fillRect(px + 1, py + 1, TILE_SIZE - 2, 4*s);
+                // Darker bottom edge
+                ctx.fillStyle = '#3a1a5a';
+                ctx.fillRect(px + 1, py + TILE_SIZE - 3*s, TILE_SIZE - 2, 2*s);
+                // Glowing right edge (pulsing)
+                const glowIntensity = 0.7 + Math.sin(Date.now() / 300) * 0.3;
+                ctx.fillStyle = `rgba(200, 100, 255, ${glowIntensity})`;
+                ctx.fillRect(px + TILE_SIZE - 4, py, 4, TILE_SIZE);
+                ctx.fillStyle = `rgba(255, 150, 255, ${glowIntensity})`;
+                ctx.fillRect(px + TILE_SIZE - 2, py + 2, 2, TILE_SIZE - 4);
+                // Arrow pointing left
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.moveTo(px + 5, py + TILE_SIZE/2);
+                ctx.lineTo(px + 12, py + TILE_SIZE/2 - 5);
+                ctx.lineTo(px + 12, py + TILE_SIZE/2 + 5);
+                ctx.closePath();
+                ctx.fill();
                 break;
         }
     }

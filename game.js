@@ -21,7 +21,9 @@ const DREAM_VIEWPORT_WIDTH = 560;
 const DREAM_VIEWPORT_HEIGHT = 336; // Rectangle viewport for side-scroller
 
 // Total canvas size
-const GAME_WIDTH = 560;
+const GAME_WIDTH = 560;  // Viewport width (UI centering uses this)
+const MINIMAP_AREA_WIDTH = 110;  // Extra space on right for minimap
+const CANVAS_WIDTH = GAME_WIDTH + MINIMAP_AREA_WIDTH;  // Total canvas width
 const GAME_HEIGHT = REAL_VIEWPORT_HEIGHT + DREAM_VIEWPORT_HEIGHT;  // 560 + 336 = 896
 
 // World positions on screen
@@ -46,7 +48,7 @@ const VIEWPORT_HEIGHT = REAL_VIEWPORT_HEIGHT;
 const REAL_WORLD_HEIGHT = REAL_VIEWPORT_HEIGHT;
 const DREAM_WORLD_HEIGHT = DREAM_VIEWPORT_HEIGHT;
 
-canvas.width = GAME_WIDTH;
+canvas.width = CANVAS_WIDTH;  // Includes minimap area
 canvas.height = GAME_HEIGHT;
 
 // Game speed multiplier (0.9 = 10% slower)
@@ -6155,9 +6157,9 @@ function drawMinimap() {
     const minimapW = Math.floor(mapWidth * scale);
     const minimapH = Math.floor(mapHeight * scale);
 
-    // Position: top-left, below power-up indicators (around y=70 to avoid overlap)
-    const minimapX = 5;
-    const minimapY = REAL_WORLD_Y_OFFSET + 70;
+    // Position: right side of viewports, in the minimap area
+    const minimapX = GAME_WIDTH + 5;  // 5px padding from viewport edge
+    const minimapY = 5;  // Near top
 
     // Background with border
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -6236,7 +6238,7 @@ function update() {
 }
 
 function draw() {
-    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
 
     // Handle different screen states
     if (GameState.screenState === 'title') {
@@ -6249,6 +6251,10 @@ function draw() {
         drawShop();
         return;
     }
+
+    // Draw minimap area background (right side panel)
+    ctx.fillStyle = '#0d0d15';
+    ctx.fillRect(GAME_WIDTH, 0, MINIMAP_AREA_WIDTH, GAME_HEIGHT);
 
     // Draw BOTH worlds (split-screen layout)
     RealWorld.draw();   // Top half
@@ -6289,7 +6295,7 @@ function draw() {
     // Victory screen overlay
     if (GameState.gameComplete) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        ctx.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 36px Courier New';
         ctx.textAlign = 'center';
@@ -6422,7 +6428,7 @@ function drawTitleScreen() {
     gradient.addColorStop(0.5, '#1a0030');
     gradient.addColorStop(1, '#0a0025');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
 
     // Animated stars
     const time = Date.now() / 1000;
@@ -6611,12 +6617,12 @@ function drawGameOver() {
     // Desaturation effect - darken with reddish tint (slowed by 0.5x)
     const fadeIn = Math.min(1, t / 60); // Fade in over 1 second
     ctx.fillStyle = `rgba(20, 0, 0, ${0.7 * fadeIn})`;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
 
     // Scanline effect
     ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * fadeIn})`;
     for (let y = 0; y < GAME_HEIGHT; y += 4) {
-        ctx.fillRect(0, y, GAME_WIDTH, 2);
+        ctx.fillRect(0, y, CANVAS_WIDTH, 2);
     }
 
     // Only show text after initial fade
@@ -6681,7 +6687,7 @@ function drawGameOver() {
 function drawShop() {
     // Dark purple background
     ctx.fillStyle = '#1a0a2e';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
 
     // Starfield background effect
     const time = Date.now() / 1000;
@@ -6760,7 +6766,7 @@ function drawShop() {
 function drawPauseMenu() {
     // Darken game
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.fillRect(0, 0, CANVAS_WIDTH, GAME_HEIGHT);
 
     // Pause title
     ctx.fillStyle = '#ff69b4';

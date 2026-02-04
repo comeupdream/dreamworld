@@ -2259,6 +2259,13 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
+    // Dev export: Press M to copy current room/world data to clipboard
+    if (e.code === 'KeyM' && GameState.screenState === 'playing') {
+        exportLevelData();
+        e.preventDefault();
+        return;
+    }
+
     // Normal gameplay input
     if (!GameState.keysPressed[e.code]) {
         KeyState.justPressed[e.code] = true;
@@ -2286,6 +2293,47 @@ function handlePauseSelection() {
             GameState.screenState = 'title';
             Audio8Bit.stopMusic();
             break;
+    }
+}
+
+function exportLevelData() {
+    const isReal = GameState.currentWorld === 'real';
+    const tiles = isReal ? Levels.getReal() : Levels.getDream();
+
+    if (!tiles || !tiles[0]) {
+        showMessage('No level data to export!', 90);
+        return;
+    }
+
+    // Build the array string
+    let output = '';
+    const worldLabel = isReal ? `Real World - Level ${Levels.current} Room ${GameState.currentRoom}` : `Dream World - Level ${Levels.current}`;
+    output += `// ${worldLabel}\n`;
+    output += '[\n';
+    for (let y = 0; y < tiles.length; y++) {
+        output += '    [' + tiles[y].join(',') + ']' + (y < tiles.length - 1 ? ',' : '') + '\n';
+    }
+    output += ']';
+
+    // Try to copy to clipboard
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(output).then(() => {
+            showMessage(`${isReal ? 'Room' : 'Dream'} data copied! (Press M)`, 120);
+            console.log('=== LEVEL EXPORT ===');
+            console.log(output);
+            console.log('====================');
+        }).catch(err => {
+            console.log('=== LEVEL EXPORT (clipboard failed) ===');
+            console.log(output);
+            console.log('========================================');
+            showMessage('Copied to console (F12)', 120);
+        });
+    } else {
+        // Fallback to console
+        console.log('=== LEVEL EXPORT ===');
+        console.log(output);
+        console.log('====================');
+        showMessage('Copied to console (F12)', 120);
     }
 }
 

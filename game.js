@@ -2348,11 +2348,31 @@ function startDevGame() {
         GameState.bossDefeated[5] = true;
     }
 
-    Player.init();
+    // Spawn player at correct location based on world
+    if (GameState.currentWorld === 'dream') {
+        // Dream world: find portal (tile 2) in dream tiles
+        const dreamTiles = Levels.getDream();
+        const portal = findTilePosition(dreamTiles, 2);
+
+        Player.gridX = portal.found ? portal.x : 2;
+        Player.gridY = portal.found ? portal.y : dreamTiles.length - 3;
+        Player.x = Player.gridX * TILE_SIZE + 2;
+        Player.y = Player.gridY * TILE_SIZE + 2;
+        Player.isMoving = false;
+        Player.isJumping = false;
+        Player.isFalling = false;
+        Player.fallSpeed = 0;
+        Player.facing = 1;
+        Player.facingDir = 'right';
+        DreamCamera.snapTo(Player.x, Player.y, Player.width, Player.height);
+    } else {
+        // Real world: Player.init() finds door (tile 5) in real tiles
+        Player.init();
+        RealCamera.snapTo(Player.x, Player.y, TILE_SIZE, TILE_SIZE);
+    }
+
     spawnEnemies();
     updateUI();
-
-    console.log(`DEV START: Level ${GameState.devLevel}, Room ${GameState.devRoom}, World: ${GameState.devWorld}`);
 }
 
 document.addEventListener('keyup', (e) => {

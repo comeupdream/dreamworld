@@ -390,6 +390,15 @@
                         <input type="number" id="patrolRange" value="4" min="1" max="20" style="width: 50px;">
                     </div>
                 </div>
+                <div id="shadowPathOptions" style="margin-top: 8px; display: none; background: rgba(128,0,255,0.2); padding: 8px; border-radius: 5px;">
+                    <label style="font-size: 0.85em; color: #cc66ff;">Shadow Path Mode:</label>
+                    <p style="font-size: 0.7em; color: #aaa; margin: 5px 0;">1. Click tiles to draw path<br>2. Click first tile again to place enemy</p>
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button class="btn-secondary" onclick="clearShadowPath()" style="flex:1; font-size: 0.75em; background: #663399;">Clear Path</button>
+                        <button class="btn-secondary" onclick="finishShadowPath()" style="flex:1; font-size: 0.75em; background: #339933;">Place Enemy</button>
+                    </div>
+                    <div id="shadowPathCount" style="font-size: 0.75em; color: #cc66ff; margin-top: 5px;">Path: 0 tiles</div>
+                </div>
                 <div class="control-row" style="margin-top: 5px;">
                     <label style="font-size: 0.85em;">Speed:</label>
                     <input type="number" id="enemySpeed" value="1.2" min="0.1" max="5" step="0.1" style="width: 50px;">
@@ -524,6 +533,7 @@
         let selectedEnemyType = 'patrol';
         let patrolDirection = 'horizontal';
         let selectedEnemy = null; // For editing existing enemy
+        let shadowPath = []; // Current shadow path being drawn
 
         // Canvas setup
         const canvas = document.getElementById('levelCanvas');
@@ -846,12 +856,63 @@
                 drawDreamViewportOverlay(tileSize);
             }
 
+            // Draw shadow path being drawn (before enemies so enemies render on top)
+            if (shadowPath.length > 0) {
+                drawShadowPath(tileSize);
+            }
+
             // Draw enemies
             drawEnemies(tileSize);
 
             // Draw preview for rect/line tools
             if (rectStart && currentTool === 'rect') {
                 // Preview would go here
+            }
+        }
+
+        // Draw the shadow path being constructed
+        function drawShadowPath(tileSize) {
+            // Draw path tiles
+            shadowPath.forEach((tile, index) => {
+                const px = tile.x * tileSize;
+                const py = tile.y * tileSize;
+
+                // Fill with semi-transparent purple
+                ctx.fillStyle = 'rgba(128, 0, 255, 0.4)';
+                ctx.fillRect(px, py, tileSize, tileSize);
+
+                // Highlight first tile (start position) differently
+                if (index === 0) {
+                    ctx.strokeStyle = '#ff00ff';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
+
+                    // Draw "START" label
+                    ctx.fillStyle = '#ff00ff';
+                    ctx.font = 'bold 8px sans-serif';
+                    ctx.fillText('START', px + 2, py + 10);
+                } else {
+                    ctx.strokeStyle = '#aa66ff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 2, py + 2, tileSize - 4, tileSize - 4);
+                }
+
+                // Draw tile number
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText(String(index + 1), px + tileSize - 12, py + tileSize - 4);
+            });
+
+            // Draw lines connecting path tiles
+            if (shadowPath.length > 1) {
+                ctx.strokeStyle = 'rgba(200, 100, 255, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(shadowPath[0].x * tileSize + tileSize/2, shadowPath[0].y * tileSize + tileSize/2);
+                for (let i = 1; i < shadowPath.length; i++) {
+                    ctx.lineTo(shadowPath[i].x * tileSize + tileSize/2, shadowPath[i].y * tileSize + tileSize/2);
+                }
+                ctx.stroke();
             }
         }
 
@@ -862,8 +923,35 @@
                 const py = enemy.y * tileSize;
                 const isSelected = selectedEnemy === index;
 
-                // Draw patrol range first (behind enemy)
-                if (enemy.type === 'patrol' || enemy.type === 'shadow') {
+                // Draw allowed tiles for shadow enemies
+                if (enemy.type === 'shadow' && enemy.allowedTiles && enemy.allowedTiles.length > 0) {
+                    // Draw each allowed tile
+                    enemy.allowedTiles.forEach((tile, tileIndex) => {
+                        const tpx = tile.x * tileSize;
+                        const tpy = tile.y * tileSize;
+
+                        ctx.fillStyle = isSelected ? 'rgba(200, 100, 255, 0.4)' : 'rgba(128, 0, 200, 0.25)';
+                        ctx.fillRect(tpx, tpy, tileSize, tileSize);
+
+                        ctx.strokeStyle = isSelected ? '#cc66ff' : 'rgba(128, 0, 200, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(tpx + 1, tpy + 1, tileSize - 2, tileSize - 2);
+                    });
+
+                    // Draw lines connecting allowed tiles
+                    if (enemy.allowedTiles.length > 1) {
+                        ctx.strokeStyle = isSelected ? 'rgba(200, 100, 255, 0.6)' : 'rgba(128, 0, 200, 0.4)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(enemy.allowedTiles[0].x * tileSize + tileSize/2, enemy.allowedTiles[0].y * tileSize + tileSize/2);
+                        for (let i = 1; i < enemy.allowedTiles.length; i++) {
+                            ctx.lineTo(enemy.allowedTiles[i].x * tileSize + tileSize/2, enemy.allowedTiles[i].y * tileSize + tileSize/2);
+                        }
+                        ctx.stroke();
+                    }
+                }
+                // Draw patrol range for patrol enemies (not shadow)
+                else if (enemy.type === 'patrol') {
                     ctx.fillStyle = 'rgba(255, 100, 0, 0.2)';
                     ctx.strokeStyle = 'rgba(255, 100, 0, 0.6)';
                     ctx.lineWidth = 2;
@@ -1129,9 +1217,19 @@
                 btn.style.background = btn.dataset.type === type ? '#ff4444' : '#444';
             });
 
-            // Show/hide patrol options
+            // Show/hide patrol options (for patrol type, not shadow)
             const patrolOptions = document.getElementById('patrolOptions');
-            patrolOptions.style.display = (type === 'patrol' || type === 'shadow') ? 'block' : 'none';
+            patrolOptions.style.display = type === 'patrol' ? 'block' : 'none';
+
+            // Show/hide shadow path options
+            const shadowOptions = document.getElementById('shadowPathOptions');
+            shadowOptions.style.display = type === 'shadow' ? 'block' : 'none';
+
+            // Clear shadow path when switching types
+            if (type !== 'shadow') {
+                shadowPath = [];
+                render();
+            }
         }
 
         function setPatrolDir(dir) {
@@ -1153,17 +1251,13 @@
                 speed: speed
             };
 
-            // Add patrol properties for patrol and shadow types
-            if (selectedEnemyType === 'patrol' || selectedEnemyType === 'shadow') {
+            // Add patrol properties for patrol type only
+            if (selectedEnemyType === 'patrol') {
                 enemy.patrol = patrolDirection;
                 enemy.range = range;
             }
 
-            // Shadow is a variant of patrol in game.js
-            if (selectedEnemyType === 'shadow') {
-                enemy.type = 'patrol';
-                enemy.variant = 'shadow';
-            }
+            // Note: shadow enemies are placed via finishShadowPath(), not this function
 
             enemies.push(enemy);
             updateEnemyList();
@@ -1201,11 +1295,17 @@
             }
 
             list.innerHTML = enemies.map((e, i) => {
-                const typeLabel = e.variant === 'shadow' ? 'Shadow' :
+                const typeLabel = e.type === 'shadow' ? 'Shadow' :
+                                  e.variant === 'shadow' ? 'Shadow' :
                                   e.type.charAt(0).toUpperCase() + e.type.slice(1);
-                const patrolInfo = e.patrol ? ` (${e.patrol[0].toUpperCase()}, r:${e.range})` : '';
+                let extraInfo = '';
+                if (e.type === 'shadow' && e.allowedTiles) {
+                    extraInfo = ` (${e.allowedTiles.length} tiles)`;
+                } else if (e.patrol) {
+                    extraInfo = ` (${e.patrol[0].toUpperCase()}, r:${e.range})`;
+                }
                 return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 3px; background: ${selectedEnemy === i ? '#553300' : '#222'}; margin: 2px 0; border-radius: 3px; cursor: pointer;" onclick="selectEnemyInList(${i})">
-                    <span>${typeLabel}${patrolInfo} @(${e.x},${e.y})</span>
+                    <span>${typeLabel}${extraInfo} @(${e.x},${e.y})</span>
                     <button onclick="event.stopPropagation(); deleteEnemy(${i})" style="background: #aa3333; border: none; color: white; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 0.8em;">X</button>
                 </div>`;
             }).join('');
@@ -1213,6 +1313,66 @@
 
         function selectEnemyInList(index) {
             selectedEnemy = selectedEnemy === index ? null : index;
+            updateEnemyList();
+            render();
+        }
+
+        // ==========================================
+        // SHADOW PATH FUNCTIONS
+        // ==========================================
+
+        function clearShadowPath() {
+            shadowPath = [];
+            document.getElementById('shadowPathCount').textContent = 'Path: 0 tiles';
+            render();
+        }
+
+        function addToShadowPath(x, y) {
+            // Check if this tile is already in path
+            const existingIndex = shadowPath.findIndex(t => t.x === x && t.y === y);
+
+            if (existingIndex >= 0) {
+                // If clicking the first tile and path has multiple tiles, finish and place enemy
+                if (existingIndex === 0 && shadowPath.length > 1) {
+                    finishShadowPath();
+                    return;
+                }
+                // Otherwise remove this tile from path
+                shadowPath.splice(existingIndex, 1);
+            } else {
+                // Add tile to path
+                shadowPath.push({ x, y });
+            }
+
+            document.getElementById('shadowPathCount').textContent = `Path: ${shadowPath.length} tiles`;
+            render();
+        }
+
+        function finishShadowPath() {
+            if (shadowPath.length < 1) {
+                alert('Draw at least 1 tile for the shadow path!');
+                return;
+            }
+
+            const speed = parseFloat(document.getElementById('enemySpeed').value) || 1.2;
+
+            // Place enemy at first tile of path
+            const startTile = shadowPath[0];
+
+            const enemy = {
+                x: startTile.x,
+                y: startTile.y,
+                type: 'shadow',
+                speed: speed,
+                allowedTiles: [...shadowPath] // Copy the path
+            };
+
+            enemies.push(enemy);
+
+            // Clear the path
+            shadowPath = [];
+            document.getElementById('shadowPathCount').textContent = 'Path: 0 tiles';
+
             updateEnemyList();
             render();
         }
@@ -1690,7 +1850,13 @@
 
             // Enemy mode handling
             if (editorMode === 'enemies') {
-                if (e.button === 0) { // Left click - place enemy
+                if (e.button === 0) { // Left click
+                    // Shadow type uses path drawing mode
+                    if (selectedEnemyType === 'shadow') {
+                        addToShadowPath(x, y);
+                        return;
+                    }
+
                     // Check if enemy exists at this location
                     const existingIndex = findEnemyAt(x, y);
                     if (existingIndex >= 0) {
@@ -1920,6 +2086,11 @@
                     if (enemy.variant) {
                         enemyStr += `, variant: '${enemy.variant}'`;
                     }
+                    // Include allowedTiles for shadow enemies
+                    if (enemy.allowedTiles && enemy.allowedTiles.length > 0) {
+                        const tilesStr = enemy.allowedTiles.map(t => `{x:${t.x},y:${t.y}}`).join(', ');
+                        enemyStr += `, allowedTiles: [${tilesStr}]`;
+                    }
                     enemyStr += ' }' + (i < enemies.length - 1 ? ',' : '');
                     output += enemyStr + '\n';
                 });
@@ -2082,7 +2253,7 @@
 
             // Enemy count
             const patrolCount = enemies.filter(e => e.type === 'patrol' && !e.variant).length;
-            const shadowCount = enemies.filter(e => e.variant === 'shadow').length;
+            const shadowCount = enemies.filter(e => e.type === 'shadow' || e.variant === 'shadow').length;
             const chaseCount = enemies.filter(e => e.type === 'chase').length;
             const voidorbCount = enemies.filter(e => e.type === 'voidorb').length;
 

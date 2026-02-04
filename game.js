@@ -3251,7 +3251,8 @@ function spawnEnemies() {
             if (world === 'real' && e.room !== undefined && e.room !== currentRoom) return;
 
             // Determine HP based on enemy variant (shadow = 2 HP, normal = 1 HP)
-            const variant = e.variant || 'normal';
+            // Type 'shadow' enemies automatically get shadow variant
+            const variant = e.type === 'shadow' ? 'shadow' : (e.variant || 'normal');
             const hp = variant === 'shadow' ? 2 : 1;
 
             // Void orbs are slightly smaller and have shooting capability
@@ -3280,7 +3281,9 @@ function spawnEnemies() {
                 templateIndex: index, // Track which template enemy this is
                 shootTimer: isVoidOrb ? 180 : 0, // Void orbs shoot every 3 seconds
                 shootCooldown: 180, // 3 second cooldown
-                plasmaPhase: Math.random() * Math.PI * 2 // For animation
+                plasmaPhase: Math.random() * Math.PI * 2, // For animation
+                allowedTiles: e.allowedTiles || null, // For shadow enemies - array of {x, y}
+                reactionTimer: 0 // For shadow enemies - delay before recalculating target
             });
         });
     }
@@ -3332,7 +3335,54 @@ function updateEnemies() {
         let nextX = enemy.x;
         let nextY = enemy.y;
 
-        if (enemy.type === 'chase') {
+        if (enemy.type === 'shadow' && enemy.allowedTiles && enemy.allowedTiles.length > 0) {
+            // Shadow enemy - moves toward player but constrained to allowed tiles
+
+            // Reaction delay - only recalculate target periodically
+            if (enemy.reactionTimer === undefined) enemy.reactionTimer = 0;
+            enemy.reactionTimer--;
+
+            if (enemy.reactionTimer <= 0) {
+                // Find the allowed tile closest to the player
+                let bestTile = null;
+                let bestDist = Infinity;
+                const playerCenterX = Player.x + Player.width / 2;
+                const playerCenterY = Player.y + Player.height / 2;
+
+                for (const tile of enemy.allowedTiles) {
+                    const tileCenterX = tile.x * TILE_SIZE + TILE_SIZE / 2;
+                    const tileCenterY = tile.y * TILE_SIZE + TILE_SIZE / 2;
+                    const dist = Math.abs(playerCenterX - tileCenterX) + Math.abs(playerCenterY - tileCenterY);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestTile = tile;
+                    }
+                }
+
+                if (bestTile) {
+                    enemy.targetTileX = bestTile.x * TILE_SIZE + 2;
+                    enemy.targetTileY = bestTile.y * TILE_SIZE + 2;
+                }
+                enemy.reactionTimer = 30; // ~0.5 second delay before recalculating
+            }
+
+            // Move toward target tile
+            if (enemy.targetTileX !== undefined && enemy.targetTileY !== undefined) {
+                const dx = enemy.targetTileX - enemy.x;
+                const dy = enemy.targetTileY - enemy.y;
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+
+                if (absDx > 2 || absDy > 2) {
+                    // Move on one axis at a time (UDLR only)
+                    if (absDx > absDy && absDx > 2) {
+                        nextX = enemy.x + Math.sign(dx) * enemy.speed * GAME_SPEED;
+                    } else if (absDy > 2) {
+                        nextY = enemy.y + Math.sign(dy) * enemy.speed * GAME_SPEED;
+                    }
+                }
+            }
+        } else if (enemy.type === 'chase') {
             // Chase enemy - moves toward player UDLR only (no diagonal)
             const dx = Player.x - enemy.x;
             const dy = Player.y - enemy.y;
@@ -3391,7 +3441,17 @@ function updateEnemies() {
             }
         }
 
-        if (enemy.type === 'chase') {
+        if (enemy.type === 'shadow' && enemy.allowedTiles && enemy.allowedTiles.length > 0) {
+            // Shadow enemies - check if next position is within allowed tiles
+            const nextTileX = Math.floor((nextX + enemy.width / 2) / TILE_SIZE);
+            const nextTileY = Math.floor((nextY + enemy.height / 2) / TILE_SIZE);
+
+            const isAllowed = enemy.allowedTiles.some(t => t.x === nextTileX && t.y === nextTileY);
+            if (isAllowed) {
+                enemy.x = nextX;
+                enemy.y = nextY;
+            }
+        } else if (enemy.type === 'chase') {
             // Chase enemies move UDLR only - switch axis when blocked
             if (nextX !== enemy.x) {
                 if (!blockedX) {
